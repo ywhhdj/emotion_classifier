@@ -334,9 +334,11 @@ def stage_onnx(args, num_labels: int | None = None):
         input_names=["input"], output_names=["logits"],
         dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}},
         opset_version=18,
-        do_constant_folding=True
+        do_constant_folding=True,
+        keep_initializers_as_inputs=False
     )
     print(f"[onnx] 已导出 → {Config.ONNX_PATH}")
+
 
     onnx_model = onnx.load(Config.ONNX_PATH)
     onnx.checker.check_model(onnx_model)
@@ -346,6 +348,8 @@ def stage_onnx(args, num_labels: int | None = None):
         out = sess.run(["logits"], {"input": x})[0]
         assert out.shape == (b, num_labels), out.shape # type: ignore
     print(f"[onnx] 推理自检通过 (1/2/8 batch, num_labels={num_labels})")
+    onnx.save(onnx.load(Config.ONNX_PATH), Config.ONNX_PATH)
+    print("[onnx] 已合并为单一文件")
     return Config.ONNX_PATH
 
 

@@ -16,12 +16,12 @@ class Config:
     OUTPUT_PATH   = os.environ.get("EMO_OUTPUT", get_base_path("output"))
     DATA_PATH     = os.environ.get("EMO_DATA", get_base_path("data/emotion.csv"))
     EMBED_PATH    = os.environ.get("EMO_EMBED", get_base_path("embeddings.npz"))
-    MODEL_PATH    = os.environ.get("EMO_MODEL", get_base_path("model/best_model.pt"))
+    MODEL_PATH    = os.environ.get("EMO_MODEL", get_base_path("model/emotion_classify.pt"))
     ONNX_PATH     = os.environ.get("EMO_ONNX",  get_base_path("model/emotion_classifier.onnx"))
     LABELMAP_PATH = os.environ.get("EMO_LABEL", get_base_path("label_map.json"))
 
     # 模型 
-    MODEL_NAME   = get_base_path("paraphrase_multilingual_MiniLM_L12_v2")
+    MODEL_NAME   = "paraphrase-multilingual-MiniLM-L12-v2"
     INPUT_DIM    = 384
     HIDDEN_DIM   = 256
     DROPOUT      = 0.5
@@ -37,7 +37,7 @@ class Config:
     WEIGHT_DECAY  = 1e-3
     WARMUP_RATIO  = 0.05       # 学习率预热比例
     GRAD_CLIP     = 1.0
-    EARLY_STOP    = 20        # 验证集连续 N 轮不提升则停止
+    EARLY_STOP    = 22        # 验证集连续 N 轮不提升则停止
     FOCAL_GAMMA   = 2.0          # 默认 2.0
     USE_FOCAL_LOSS = True   # 是否使用类别权重
 

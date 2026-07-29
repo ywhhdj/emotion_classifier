@@ -130,6 +130,17 @@ $ emotion-classify "test" --json
 ]
 ```
 
+# 训练模型
+训练模型需要使用 PyTorch 框架。以下是一个简单的训练脚本示例：
+```python
+stage_train(
+  emb: dict | None = None, # 嵌入字典，用于存储预训练的嵌入向量
+  num_labels: int | None = None, # 情感标签数量
+)
+returns:
+  - model: EmotionClassifierNet
+```
+
 ## 集成到 Agent 系统
 
 ### LangChain Tool 示例
@@ -179,7 +190,7 @@ def predict(req: Request):
 
 | 文件 | 说明 |
 |------|------|
-| `best_model.pt` | PyTorch 模型权重 |
+| `emotion-classify.pt` | PyTorch 模型权重 |
 | `emotion_classifier.onnx` | ONNX 模型（推荐部署用） |
 | `label_map.json` | 标签映射文件 |
 | `embeddings.npz` | 预计算嵌入缓存（可选） |
