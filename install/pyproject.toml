@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emotion-classifier"
+version = "1.0.0"
+description = "多语言情感分类模型包（19 种情感，支持中英日，ONNX/PyTorch 双后端）"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+dependencies = [
+  "torch>=1.12",
+  "sentence-transformers>=2.2",
+  "onnxruntime>=1.14",
+  "numpy>=1.21",
+  "scikit-learn>=1.0",
+]
+
+[project.scripts]
+emotion-classify = "emotion_classifier.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+emotion_classifier = ["data/*"]
