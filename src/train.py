@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 import re
 import unicodedata
 from sentence_transformers import SentenceTransformer
@@ -34,6 +35,37 @@ class TextCleaner:
             text = r.sub("", text).strip()
         return text
 
+def _get_model_path() -> str:
+    cache = Path(Config.MODEL_CACHE_DIR)
+    # distiluse-base-multilingual-cased-v2 下载后目录名
+    model_dir_name = Config.MODEL_NAME.replace("/", "_")
+    model_path = cache / model_dir_name
+
+    if model_path.exists() and any(model_path.iterdir()):
+        return str(model_path)
+
+    if not Config.MODEL_AUTO_DOWNLOAD:
+        raise FileNotFoundError(
+            f"模型未找到: {model_path}\n"
+            f"请手动下载 {Config.MODEL_NAME} 并放置到该目录"
+        )
+
+    # 从 HuggingFace 下载（SentenceTransformer 内部处理）
+    print(f"[model] 首次运行，正在下载 {Config.MODEL_NAME} (~130MB)...")
+    print(f"[model] 缓存目录: {cache}")
+    st = SentenceTransformer(Config.MODEL_NAME)
+    # 保存到缓存目录供后续使用
+    st.save(str(model_path))
+    print(f"[model] 下载完成 → {model_path}")
+    return str(model_path)
+
+def _load_st_model(device_str: str) -> SentenceTransformer:
+    model_path = _get_model_path()
+    st = SentenceTransformer(model_path)
+    if device_str == "cuda":
+        st = st.to(torch.device("cuda"))
+    return st
+
 def oversample_minority(df, min_samples=20):
     """对样本数少于 min_samples 的类别进行过采样"""
     groups = df.groupby('label')
@@ -65,10 +97,11 @@ def stage_clean(args, df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
     print(f"[clean] 清洗后样本数: {len(df)}")
 
     # 多语言增强
-    if not args.use_aug:
+    if not getattr(args, 'use_aug', True):
         #不用则排除lang列除zh的样本
-        df = df[df["lang"] == "zh"]
-        print(f"[clean] 掇除后样本数: {len(df)}")
+        if 'lang' in df.columns:
+            df = df[df['lang'] == 'zh']
+            print(f"[clean] 排除非中文后: {len(df)}")
 
     os.makedirs(Config.OUTPUT_PATH, exist_ok=True)
     df.to_csv(os.path.join(Config.OUTPUT_PATH, "clean_data.csv"), index=False, encoding="utf-8-sig")
@@ -125,15 +158,6 @@ def stage_split(args, df: pd.DataFrame | None = None) -> dict:
     }
 
 
-def _load_st_model(args):
-    device_str = "cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu"
-    print(f"[embed] using device: {device_str}")
-    st = SentenceTransformer(Config.MODEL_NAME)
-    if device_str == "cuda":
-        st = st.to(torch.device("cuda"))
-    return st
-
-
 def stage_embed(args, split: dict | None = None):
     """对 train/val/test 编码并缓存为 npz。"""
     if split is None:
@@ -141,7 +165,9 @@ def stage_embed(args, split: dict | None = None):
             k: pd.read_csv(os.path.join(Config.OUTPUT_PATH, f"{k}.csv"))
                  for k in ["train", "val", "test"]
         }
-    st = _load_st_model(args)
+    device_str = "cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu"
+    print(f"[embed] using device: {device_str}")
+    st = _load_st_model(device_str)
     encoder = ChunkedEncoder(
         st,
         max_tokens=args.chunk_size,
@@ -206,8 +232,10 @@ def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
     loaders = _build_loaders(emb, args, num_labels) # type: ignore
 
     model = EmotionClassifierNet(
-        input_dim=Config.INPUT_DIM, num_classes=num_labels, # type: ignore
-        hidden_dim=args.hidden_dim, dropout=args.dropout
+        input_dim=Config.INPUT_DIM, 
+        num_classes=num_labels, # type: ignore
+        hidden_dim=args.hidden_dim,
+        dropout=args.dropout
     ).to(device)
 
     # 权重初始化
@@ -337,20 +365,19 @@ def stage_onnx(args, num_labels: int | None = None):
         do_constant_folding=True,
         keep_initializers_as_inputs=False
     )
-    print(f"[onnx] 已导出 → {Config.ONNX_PATH}")
-
-
     onnx_model = onnx.load(Config.ONNX_PATH)
+    onnx.save(onnx_model, Config.ONNX_PATH)
     onnx.checker.check_model(onnx_model)
+
+    # 推理自检
     sess = ort.InferenceSession(Config.ONNX_PATH, providers=["CPUExecutionProvider"])
     for b in [1, 2, 8]:
         x = np.random.randn(b, Config.INPUT_DIM).astype(np.float32)
         out = sess.run(["logits"], {"input": x})[0]
         assert out.shape == (b, num_labels), out.shape # type: ignore
-    print(f"[onnx] 推理自检通过 (1/2/8 batch, num_labels={num_labels})")
-    onnx.save(onnx.load(Config.ONNX_PATH), Config.ONNX_PATH)
-    print("[onnx] 已合并为单一文件")
-    return Config.ONNX_PATH
+
+    print(f"[onnx] 已导出 → {Config.ONNX_PATH} (单一文件，无 .data)")
+    print(f"[onnx] 自检通过 (batch 1/2/8, num_labels={num_labels})")
 
 
 def stage_infer(args, texts: list[str] | None = None):
@@ -368,7 +395,8 @@ def stage_infer(args, texts: list[str] | None = None):
     with open(Config.LABELMAP_PATH,encoding="utf-8") as f:
         id2label = {int(k): v for k, v in json.load(f)["id2label"].items()}
 
-    st = SentenceTransformer(Config.MODEL_NAME)
+    device_str = "cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu"
+    st = _load_st_model(device_str)
     sess = ort.InferenceSession(Config.ONNX_PATH, providers=["CPUExecutionProvider"])
 
     embs = st.encode(texts, convert_to_numpy=True, show_progress_bar=False).astype(np.float32)

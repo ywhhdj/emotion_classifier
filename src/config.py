@@ -20,6 +20,9 @@ class Config:
     ONNX_PATH     = os.environ.get("EMO_ONNX",  get_base_path("model/emotion_classifier.onnx"))
     LABELMAP_PATH = os.environ.get("EMO_LABEL", get_base_path("label_map.json"))
 
+    MODEL_CACHE_DIR   = os.environ.get("EMO_CACHE", get_base_path("models"))
+    MODEL_AUTO_DOWNLOAD = True
+
     # 模型 
     MODEL_NAME   = "paraphrase-multilingual-MiniLM-L12-v2"
     INPUT_DIM    = 384
@@ -27,19 +30,22 @@ class Config:
     DROPOUT      = 0.5
     NUM_LABELS   = 19          # 仅作默认/校验，实际以数据为准
 
-
-    TEST_SIZE     = 0.2
+    # 训练参数 
+    TEST_SIZE     = 0.15
+    VAL_SIZE      = 0.10
     RANDOM_STATE  = 42
     BATCH_SIZE    = 128
-    # 训练参数
     EPOCHS        = 60
     LR            = 1e-3
     WEIGHT_DECAY  = 1e-3
-    WARMUP_RATIO  = 0.05       # 学习率预热比例
+    WARMUP_RATIO  = 0.05 # 学习率预热比例
     GRAD_CLIP     = 1.0
-    EARLY_STOP    = 22        # 验证集连续 N 轮不提升则停止
-    FOCAL_GAMMA   = 2.0          # 默认 2.0
-    USE_FOCAL_LOSS = True   # 是否使用类别权重
+    EARLY_STOP    = 22   # 验证集连续 N 轮不提升则停止
+    FOCAL_GAMMA   = 2.0
+    USE_FOCAL_LOSS = True # 是否使用类别权重
+    TEST_SIZE     = 0.15
+    RANDOM_STATE  = 42
+    BATCH_SIZE    = 128
 
     # 推理 
     MAX_SEQ_LEN   = 128        # MiniLM 最大长度
@@ -57,5 +63,7 @@ class Config:
     @staticmethod
     def ensure_dirs():
         os.makedirs(Config.OUTPUT_PATH, exist_ok=True)
+        os.makedirs(Config.MODEL_CACHE_DIR, exist_ok=True)
+        os.makedirs(os.path.dirname(Config.MODEL_PATH), exist_ok=True)
     
 

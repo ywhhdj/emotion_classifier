@@ -1,11 +1,19 @@
 import argparse
-from config import Config
-from models import PoolingStrategy
 import os
 import sys
-#追加路径
+import json
+import torch
+import numpy as np
+
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
+
+from config import Config
+from models import PoolingStrategy
+from train import (
+    stage_clean, stage_split, stage_embed,
+    stage_train, stage_eval, stage_onnx, stage_infer
+)
 
 
 def parse_args(argv=None):
@@ -131,53 +139,32 @@ def parse_args(argv=None):
     return p.parse_args(argv)
 
 def main(argv=None):
-    import torch
-    import numpy as np
-    import json
-    from train import stage_train, stage_eval, stage_onnx, stage_infer, stage_clean, stage_split, stage_embed
     args = parse_args(argv)
     Config.DATA_PATH = args.data
     Config.OUTPUT_PATH = args.output
     Config.ensure_dirs()
-    torch.manual_seed(args.seed); np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
 
     stages = {s.strip() for s in args.stage.split(",")}
     run_all = "all" in stages
+
     df_clean, split, emb = None, None, None
 
-    if run_all or "clean" in stages:
-        df_clean = stage_clean(args)
-    if run_all or "split" in stages:
-        split = stage_split(args, df_clean)
-    if run_all or "embed" in stages:
-        emb = stage_embed(args, split)
+    if run_all or "clean" in stages: df_clean = stage_clean(args)
+    if run_all or "split" in stages: split = stage_split(args, df_clean)
+    if run_all or "embed" in stages: emb = stage_embed(args, split)
     if run_all or "train" in stages:
-        if split is None:
-            with open(Config.LABELMAP_PATH) as f:
-                num_labels = json.load(f)["num_labels"]
-        else:
-            num_labels = split["num_labels"]
-        stage_train(args, emb, num_labels)
+        nl = split["num_labels"] if split else json.load(open(Config.LABELMAP_PATH))["num_labels"]
+        stage_train(args, emb, nl)
     if run_all or "eval" in stages:
-        if split is None:
-            with open(Config.LABELMAP_PATH) as f:
-                id2label = json.load(f)["id2label"]
-        else:
-            id2label = split["id2label"]
-        stage_eval(args, emb, id2label)
+        idl = split["id2label"] if split else json.load(open(Config.LABELMAP_PATH))["id2label"]
+        stage_eval(args, emb, idl)
     if run_all or "onnx" in stages:
-        if split is None:
-            with open(Config.LABELMAP_PATH) as f:
-                num_labels = json.load(f)["num_labels"]
-        else:
-            num_labels = split["num_labels"]
-        stage_onnx(args, num_labels)
-    if "infer" in stages or args.infer_text:
-        stage_infer(args)
-
-    # 若仅指定了全部但不含 infer，做一次默认推理演示
-    if run_all and "infer" not in stages:
-        stage_infer(args, [])
+        nl = split["num_labels"] if split else json.load(open(Config.LABELMAP_PATH))["num_labels"]
+        stage_onnx(args, nl)
+    if "infer" in stages or (run_all and args.infer_text):
+        stage_infer(args, args.infer_text)
 
 
 if __name__ == "__main__":

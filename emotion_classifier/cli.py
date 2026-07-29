@@ -38,7 +38,7 @@ def build_parser():
     p.add_argument("--top-k", "-k", type=int, default=3, help="返回前 K 个情感标签 (默认 3)")
     p.add_argument("--backend", choices=["onnx", "pytorch", "auto"], default="auto", help="推理后端")
     p.add_argument("--model-dir", type=str, default=get_resource_path("models"), help="模型目录路径（默认 ~/.emotion_classifier/models）")
-    p.add_argument("--encoder", type=str, default=None, help="SentenceTransformer 路径或名称")
+    p.add_argument("--encoder", type=str, default=None, help="编码器路径：量化ONNX文件或SentenceTransformer名称")
     p.add_argument("--json", action="store_true", help="以 JSON 格式输出")
     p.add_argument("--verbose", "-v", action="store_true", help="显示详细推理信息")
     p.add_argument("--labels", action="store_true", help="列出所有支持的标签并退出")

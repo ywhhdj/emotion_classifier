@@ -76,7 +76,7 @@ print(clf.get_labels())
 
 ## 命令行用法
 
-安装后可直接使用 `emotion-classify` 命令：
+本项目不提供命令行，需要请自行打包为可执行文件，相关用法如下：
 
 ```bash
 # 单条文本
@@ -202,7 +202,7 @@ def predict(req: Request):
 
 | 文件 | 说明 |
 |------|------|
-| `emotion-classify.pt` | PyTorch 模型权重 |
+| `emotion_classifier.pt` | PyTorch 模型权重 |
 | `emotion_classifier.onnx` | ONNX 模型（推荐部署用） |
 | `label_map.json` | 标签映射文件 |
 | `embeddings.npz` | 预计算嵌入缓存（可选） |
@@ -214,6 +214,10 @@ def predict(req: Request):
 - sentence-transformers >= 2.2
 - onnxruntime >= 1.14
 - numpy >= 1.21
+- torch>=1.12
+- scikit-learn>=1.0
+- httpx>=0.24
+- tqdm>=4.62
 
 ## License
 

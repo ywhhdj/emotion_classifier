@@ -6,6 +6,8 @@ output/
 
 # C extensions
 *.so
+models/
+to_onnx
 
 # Distribution / packaging
 .Python

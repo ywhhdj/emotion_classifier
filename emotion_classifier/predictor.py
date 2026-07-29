@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
 import numpy as np
-from .model import ModelConfig
+from .model import ModelConfig, ONNXEncoder
 
 class AsyncModelDownloader:
     def __init__(self, model_dir: Path, timeout: float = 60.0):
@@ -178,12 +178,21 @@ class EmotionClassifier:
         self.num_labels = mapping["num_labels"]
 
         self._init_backend(backend)
-        try:
+        encoder_onnx = Path(encoder_path) if encoder_path else None
+        if encoder_onnx and encoder_onnx.exists() and encoder_onnx.suffix == ".onnx":
+            # 使用量化 ONNX 编码器（推荐，更快更轻）
+            print(f"[编码器] 加载量化 ONNX: {encoder_onnx}")
+            self.encoder = ONNXEncoder(
+                onnx_path=str(encoder_onnx),
+                tokenizer_name=f"sentence-transformers/{ModelConfig.ENCODER_TOKENIZER}"
+            )
+            self._encode_method = "onnx"
+        else:
+            model_name=  encoder_path or "paraphrase-multilingual-MiniLM-L12-v2"
+            print(f"[编码器] 加载 SentenceTransformer: {model_name}")
             from sentence_transformers import SentenceTransformer
-            model_name = encoder_path or "paraphrase-multilingual-MiniLM-L12-v2"
             self.encoder = SentenceTransformer(model_name)
-        except ImportError:
-            raise ImportError("请先安装paraphrase-multilingual-MiniLM-L12-v2模型")
+            self._encode_method = "st"
 
     def _resolve_needed_files(self, backend: str) -> List[str]:
         if backend == "onnx":
@@ -246,15 +255,15 @@ class EmotionClassifier:
     # 公开 API
     # ────────────────────────────────────────
     def encode(self, texts):
-        """文本 → 384 维向量。"""
         if isinstance(texts, str):
             texts = [texts]
-        embs = self.encoder.encode(
-            texts, convert_to_numpy=True, show_progress_bar=False
-        )
-        return embs.astype(np.float32)
+        if self._encode_method == "onnx":
+            return self.encoder.encode(texts)
+        else:
+            embs = self.encoder.encode(texts, convert_to_numpy=True, show_progress_bar=False) #type: ignore
+            return embs.astype(np.float32)
 
-    def predict(self, texts, top_k: int = 3) -> List[List[Tuple[str, float]]]:
+    def predict(self, texts: list[str]|str, top_k: int = 3) -> List[List[Tuple[str, float]]]:
         """
         情感分类预测。
 
@@ -263,8 +272,6 @@ class EmotionClassifier:
         list[list[tuple[str, float]]]
             每条文本的前 top_k 个 (标签, 概率)
         """
-        if isinstance(texts, str):
-            texts = [texts]
 
         embeddings = self.encode(texts)
 
