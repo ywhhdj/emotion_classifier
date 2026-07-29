@@ -16,6 +16,7 @@ class AsyncModelDownloader:
     async def _download_one(self, client, filename: str, filepath: Path, verify: bool = True):
         """下载单个文件，带进度回调和校验。"""
         url = ModelConfig.download_url(filename)
+        print(f"\r ↓ 下载 {filename} 从 {url}")
         if filepath.exists() and not verify:
             return filepath
         tmp_path = filepath.with_suffix(filepath.suffix + ".tmp")
@@ -43,6 +44,7 @@ class AsyncModelDownloader:
             expected = ModelConfig.CHECKSUMS.get(filename)
             if expected:
                 actual = self._sha256(filepath)
+                actual = f"sha256:{actual}"
                 if actual != expected:
                     filepath.unlink(missing_ok=True)
                     raise ValueError(

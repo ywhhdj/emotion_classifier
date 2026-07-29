@@ -4,6 +4,9 @@
 
 ## 安装
 
+> 请注意本模型是基于`paraphrase-multilingual-MiniLM-L12-v2`模型训练的，在使用本模型前请先安装该模型。
+
+
 ```bash
 pip install emotion-classifier
 ```
@@ -110,21 +113,30 @@ emotion-classify "test" --verbose
 
 ### CLI 输出示例
 
-```
-$ emotion-classify "脸颊泛红，偷偷瞄了你一眼" --top-k 3
-「脸颊泛红，偷偷瞄了你一眼」
-  #1 害羞   80.00%  ████████████████
-  #2 生气   12.00%  ███
-  #3 高兴    3.00%  █
+```bash
+$ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --top-k 3
+「底下头，脸颊泛红，偷偷瞄了你一眼」
+  #1 害羞    74.57%  ██████████████
+  #2 生气    8.11%  █
+  #3 无奈    4.80%  
 
-$ emotion-classify "test" --json
+$ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --json
 [
   {
-    "text": "test",
+    "text": "底下头，脸颊泛红，偷偷瞄了你一眼",
     "predictions": [
-      {"label": "平静", "score": 0.45},
-      {"label": "疑惑", "score": 0.20},
-      {"label": "无奈", "score": 0.10}
+      {
+        "label": "害羞",
+        "score": 0.7457
+      },
+      {
+        "label": "生气",
+        "score": 0.0811
+      },
+      {
+        "label": "无奈",
+        "score": 0.048
+      }
     ]
   }
 ]
