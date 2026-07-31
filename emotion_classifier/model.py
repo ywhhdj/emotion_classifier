@@ -101,11 +101,9 @@ class ModelConfig:
     PT_FILES   = ["emotion_classify.pt", "label_map.json", ENCODER_ONNX]
 
     CHECKSUMS = {
-        "emotion_classify.pt": "sha256:d8e3c69a2d50f8c65100f4ca88aacbff4756410801f5da788850a7aa0d46b39d",
-        "emotion_classifier.onnx": "sha256:85ff97e348eec0130b3d94113a4c69d28a2cb0ff9e91d3d888d477b85eeecaf9",
-        # 如果有其他变体的校验和，在此添加：
-        # "emotion_classifier_fp16.onnx": "sha256:xxxx...",
-        # "emotion_classifier_int8.onnx": "sha256:yyyy...",
+        "emotion_classify.pt": "sha256:79c5ed6bb90145b48ae766d763bb86f29c2dec4e147dbdcaa04f65823205e9ac",
+        "emotion_classifier.onnx": "sha256:c170c1771c6b3f428f77da792605a834729304217fec39801d1adab19ba283cc",
+        "emotion_classifier_fp16.onnx": "sha256:3115eeb73db3f4c2cbda454bf921982d6e04655d5adf41f85cdc1327c2910d75",
     }
 
     @classmethod

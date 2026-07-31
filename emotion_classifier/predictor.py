@@ -332,7 +332,12 @@ class EmotionClassifier:
         if backend == "onnx":
             self._init_onnx()
         else:
-            self._init_pytorch()
+            try:
+                self._init_pytorch()
+            except ImportError:
+                print("[警告] PyTorch 依赖未安装，自动切换到 ONNX 后端")
+                backend = 'onnx'
+                self._init_onnx()
 
     def _init_onnx(self):
         import onnxruntime as ort
@@ -360,7 +365,13 @@ class EmotionClassifier:
         self._input_dtype = self.sess.get_inputs()[0].type
 
     def _init_pytorch(self):
-        import torch
+        try:
+            import torch
+        except ImportError:
+            raise ImportError(
+                "PyTorch 后端需要安装 torch 和 sentence-transformers。\n"
+                "请执行: pip install emotion-classifier[pytorch]"
+            )
         from emotion_classifier.model import EmotionClassifierNet
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

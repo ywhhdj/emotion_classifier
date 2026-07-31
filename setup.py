@@ -10,21 +10,21 @@ setup(
         "emotion_classifier.data": ["*"],
     },
     install_requires=[
-        "torch>=1.12",
-        "sentence-transformers>=2.2",
-        "onnxruntime>=1.14",
-        "numpy>=1.21",
-        "scikit-learn>=1.0",
-        "httpx>=0.24",
-        "tqdm>=4.62",
+        'onnxruntime>=1.14',
+        'numpy>=1.21',
+        'transformers>=4.30',
+        'httpx>=0.24',
+        'tqdm>=4.62'
     ],
     extras_require={
-        "onnx-only": ["onnxruntime>=1.14", "numpy>=1.21", "httpx>=0.24", "tqdm>=4.62"],
-        "dev": ["pytest>=7.0", "black>=23.0", "ruff>=0.1", "build>=1.0", "twine>=4.0"],
+        'pytorch': ['torch>=1.12', 'sentence-transformers>=2.2'],
+        'full': ['torch>=1.12', 'sentence-transformers>=2.2',
+                 'scikit-learn>=1.0', 'pandas>=1.3', 'imbalanced-learn>=0.10'],
     },
     entry_points={
         "console_scripts": [
             "emotion-classify=emotion_classifier.cli:main",
         ],
     },
+    python_requires='>=3.8'
 )

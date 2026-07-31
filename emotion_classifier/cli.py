@@ -95,7 +95,7 @@ def _load_label_map(model_dir: Path) -> Path:
     if lm.exists():
         return lm
     # 尝试打包后的 data 目录
-    return Path(ModelConfig.get_resource_path("models/label_map.json"))
+    return Path(ModelConfig.get_resource_path("data/label_map.json"))
 
 def main(argv=None):
     parser = build_parser()
