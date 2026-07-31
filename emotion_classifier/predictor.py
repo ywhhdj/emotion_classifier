@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import sys
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Literal, Optional, Dict, List, Tuple
 import numpy as np
 
 from .model import ModelConfig, ONNXEncoder
@@ -212,15 +212,18 @@ class EmotionClassifier:
     def __init__(
         self,
         model_dir: Optional[str] = None,
-        backend: str = "auto",
+        backend: Literal["onnx", "pytorch","auto"] = "auto",
         encoder_path: Optional[str] = None,
         auto_download: bool = False,
+        device: Literal["cpu", "cuda"]|None = None,
     ):
         self.model_dir = Path(model_dir) if model_dir else ModelConfig.default_model_dir()
         self.model_dir.mkdir(parents=True, exist_ok=True)
         self.backend = backend
         self.auto_download = auto_download
         self.encoder_path = encoder_path
+        from torch import cuda
+        self.device = device or ( "cuda" if cuda.is_available() else "cpu")
     
     def load_label_map(self):
         label_map_path = ModelConfig.load_label_map()
@@ -232,14 +235,13 @@ class EmotionClassifier:
 
     
     def init(self):
-        # ── 解析需要的文件 ──
         needed = self._resolve_needed_files(self.backend)
         missing = [f for f in needed if not (self.model_dir / f).exists()]
 
         if missing:
             if self.auto_download:
                 print(f"[初始化] 检测到 {len(missing)} 个模型文件缺失，开始下载...")
-                # AsyncModelDownloader.download_sync(needed, self.model_dir)
+                AsyncModelDownloader.download_sync(needed, self.model_dir)
             else:
                 raise FileNotFoundError(
                     f"模型文件缺失: {missing}\n"
@@ -288,7 +290,7 @@ class EmotionClassifier:
     def _load_st_encoder(self, model_name: str):
         print(f"[编码器] 加载 SentenceTransformer: {model_name}")
         from sentence_transformers import SentenceTransformer
-        self.encoder = SentenceTransformer(model_name)
+        self.encoder = SentenceTransformer(model_name, device=self.device)
         self._encode_method = "st"
 
     def _resolve_needed_files(self, backend: str) -> List[str]:
@@ -352,8 +354,7 @@ class EmotionClassifier:
 
         providers = ["CPUExecutionProvider"]
         try:
-            import torch
-            if torch.cuda.is_available():
+            if self.device == "cuda":
                 providers.insert(0, "CUDAExecutionProvider")
         except ImportError:
             pass
@@ -372,8 +373,6 @@ class EmotionClassifier:
                 "请执行: pip install emotion-classifier[pytorch]"
             )
         from emotion_classifier.model import EmotionClassifierNet
-
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = EmotionClassifierNet(
             input_dim=384,
             num_classes=self.num_labels,

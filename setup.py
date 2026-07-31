@@ -14,7 +14,8 @@ setup(
         'numpy>=1.21',
         'transformers>=4.30',
         'httpx>=0.24',
-        'tqdm>=4.62'
+        'tqdm>=4.62',
+        "torch>=1.12"
     ],
     extras_require={
         'pytorch': ['torch>=1.12', 'sentence-transformers>=2.2'],
