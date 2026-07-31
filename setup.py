@@ -11,10 +11,8 @@ setup(
     },
     install_requires=[
         "torch>=1.12",
-        "sentence-transformers>=2.2",
         "onnxruntime>=1.14",
         "numpy>=1.21",
-        "scikit-learn>=1.0",
         "httpx>=0.24",
         "tqdm>=4.62",
     ],
