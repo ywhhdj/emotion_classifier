@@ -4,7 +4,7 @@
 
 ## 安装
 
-> 请注意本模型是基于`paraphrase-multilingual-MiniLM-L12-v2`模型进行编码的，在使用本模型前请先安装该模型,推荐模型`model_quint8_avx2.onnx`轻量。
+> 请注意本模型是基于`paraphrase-multilingual-MiniLM-L12-v2`模型进行编码的，在使用本模型前请先安装该模型,推荐模型`model_quint8_avx2.onnx`轻量,当然可以不用自行下载，会自动下载。
 
 
 ```bash
