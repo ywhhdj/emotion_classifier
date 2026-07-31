@@ -26,21 +26,21 @@ class Config:
     # 模型 
     MODEL_NAME   = "paraphrase-multilingual-MiniLM-L12-v2"
     INPUT_DIM    = 384
-    HIDDEN_DIM   = 256
-    DROPOUT      = 0.5
+    HIDDEN_DIM   = 256 #256
+    DROPOUT      = 0.6 #0.5
     NUM_LABELS   = 19          # 仅作默认/校验，实际以数据为准
 
     # 训练参数 
-    TEST_SIZE     = 0.15
+    TEST_SIZE     = 0.2
     VAL_SIZE      = 0.10
     RANDOM_STATE  = 42
     BATCH_SIZE    = 128
-    EPOCHS        = 60
+    EPOCHS        = 60 
     LR            = 1e-3
     WEIGHT_DECAY  = 1e-3
     WARMUP_RATIO  = 0.05 # 学习率预热比例
     GRAD_CLIP     = 1.0
-    EARLY_STOP    = 22   # 验证集连续 N 轮不提升则停止
+    EARLY_STOP    = 15   # 验证集连续 N 轮不提升则停止
     FOCAL_GAMMA   = 2.0
     USE_FOCAL_LOSS = True # 是否使用类别权重
     TEST_SIZE     = 0.15

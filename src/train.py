@@ -264,7 +264,9 @@ def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
         progress = float(step - warmup_steps) / float(max(1, total_steps - warmup_steps))
         return 0.5 * (1.0 + math.cos(math.pi * progress))
 
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='max', factor=0.5, patience=5
+    )
 
     best_val, bad_epochs, history = 0.0, 0, []
     for ep in range(1, args.epochs + 1):
@@ -278,7 +280,6 @@ def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), Config.GRAD_CLIP)
             optimizer.step()
-            scheduler.step()
             tot_loss += loss.item() * len(yb)
             correct += (logits.argmax(1) == yb).sum().item()
             total += len(yb)
@@ -295,6 +296,7 @@ def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
         row = (ep, tot_loss/max(1,total), correct/max(1,total), val_acc)
         history.append(row)
         print(f"[train] ep {ep:3d} | loss {row[1]:.4f} | train {row[2]:.4f} | val {row[3]:.4f}")
+        scheduler.step(val_acc)
         if val_acc > best_val + 1e-5:
             best_val, bad_epochs = val_acc, 0
             torch.save(model.state_dict(), Config.MODEL_PATH)
