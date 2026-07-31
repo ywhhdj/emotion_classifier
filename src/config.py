@@ -12,7 +12,9 @@ class Config:
         except AttributeError:
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         return os.path.join(base, relative_path)
-
+    ONNX_ENCODER_PATH = os.environ.get("EMO_ONNX_ENCODER", get_base_path("models/model_quint8_avx2.onnx"))
+    # ONNX 编码器配套的 tokenizer 目录（若不存在则自动从 HuggingFace 下载）
+    ONNX_ENCODER_TOKENIZER_DIR = os.environ.get("EMO_ONNX_TOKENIZER", get_base_path("models/tokenizer"))
     OUTPUT_PATH   = os.environ.get("EMO_OUTPUT", get_base_path("output"))
     DATA_PATH     = os.environ.get("EMO_DATA", get_base_path("data/emotion.csv"))
     EMBED_PATH    = os.environ.get("EMO_EMBED", get_base_path("embeddings.npz"))
@@ -40,7 +42,7 @@ class Config:
     WEIGHT_DECAY  = 1e-3
     WARMUP_RATIO  = 0.05 # 学习率预热比例
     GRAD_CLIP     = 1.0
-    EARLY_STOP    = 15   # 验证集连续 N 轮不提升则停止
+    EARLY_STOP    = 22   # 验证集连续 N 轮不提升则停止
     FOCAL_GAMMA   = 2.0
     USE_FOCAL_LOSS = True # 是否使用类别权重
     TEST_SIZE     = 0.15

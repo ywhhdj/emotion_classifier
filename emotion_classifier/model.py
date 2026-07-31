@@ -79,7 +79,7 @@ class ONNXEncoder:
 
 class ModelConfig:
     GITHUB_REPO = "https://github.com/ywhhdj/emotion_classifier"
-    GITHUB_TAG  = "v0.1.0"
+    GITHUB_TAG  = "v0.1.1"
 
     # ── 编码器配置 ──
     ENCODER_ONNX     = "model_quint8_avx2.onnx"

@@ -1,6 +1,7 @@
 import math
 from pathlib import Path
 import re
+from typing import Literal
 import unicodedata
 from sentence_transformers import SentenceTransformer
 from sklearn.calibration import LabelEncoder
@@ -9,7 +10,7 @@ import pandas as pd
 from sklearn.utils import resample
 from config import Config
 import torch
-from models import ChunkedEncoder
+from models import ChunkedEncoder, ONNXEncoder
 import os
 import json
 import numpy as np
@@ -58,6 +59,22 @@ def _get_model_path() -> str:
     st.save(str(model_path))
     print(f"[model] 下载完成 → {model_path}")
     return str(model_path)
+
+def _load_onnx_encoder(onnx_path: str, tokenizer_dir: str | None = None) -> ONNXEncoder:
+    """加载 ONNX 编码器，自动寻找 tokenizer"""
+    if tokenizer_dir and not os.path.isdir(tokenizer_dir):
+        # 如果本地 tokenizer 不存在，自动从 HuggingFace 下载
+        from transformers import AutoTokenizer
+        AutoTokenizer.from_pretrained(
+            f"sentence-transformers/{Config.MODEL_NAME}",
+            cache_dir=tokenizer_dir
+        )
+        tokenizer_dir = None  # 让 ONNXEncoder 自动使用在线方式
+    return ONNXEncoder(
+        onnx_path=onnx_path,
+        tokenizer_dir=tokenizer_dir,
+        tokenizer_name=f"sentence-transformers/{Config.MODEL_NAME}"
+    )
 
 def _load_st_model(device_str: str) -> SentenceTransformer:
     model_path = _get_model_path()
@@ -158,40 +175,57 @@ def stage_split(args, df: pd.DataFrame | None = None) -> dict:
     }
 
 
-def stage_embed(args, split: dict | None = None):
+def stage_embed(args, split: dict | None = None, backend: str = "auto"):
     """对 train/val/test 编码并缓存为 npz。"""
     if split is None:
         split = {
             k: pd.read_csv(os.path.join(Config.OUTPUT_PATH, f"{k}.csv"))
                  for k in ["train", "val", "test"]
         }
-    device_str = "cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu"
-    print(f"[embed] using device: {device_str}")
-    st = _load_st_model(device_str)
-    encoder = ChunkedEncoder(
-        st,
-        max_tokens=args.chunk_size,
-        overlap=args.chunk_overlap,
-        strategy=args.pool
-    )
-    def encode_list(texts):
-        out = np.zeros((len(texts), Config.INPUT_DIM), dtype=np.float32)
-        batch = []
-        idx = []
-        for i, t in enumerate(texts):
-            if len(t) <= args.chunk_size * 2:   # 短文本直接走 batch
-                batch.append(t)
-                idx.append(i)
-                if len(batch) >= args.batch_size:
-                    v = st.encode(batch, convert_to_numpy=True, show_progress_bar=False)
-                    for j, vj in zip(idx, v): out[j] = vj.astype(np.float32)
-                    batch, idx = [], []
-            else:
-                out[i] = encoder.encode(t)
-        if batch:
-            v = st.encode(batch, convert_to_numpy=True, show_progress_bar=False)
-            for j, vj in zip(idx, v): out[j] = vj.astype(np.float32)
-        return out
+    
+    # 确定后端
+    if backend == "auto":
+        # 如果存在 ONNX 编码器文件则优先使用
+        if os.path.exists(Config.ONNX_ENCODER_PATH):
+            backend = "onnx"
+        else:
+            backend = "pytorch"
+    
+    if backend == "onnx":
+        print(f"[embed] 使用 ONNX 编码器: {Config.ONNX_ENCODER_PATH}")
+        encoder = _load_onnx_encoder(
+            Config.ONNX_ENCODER_PATH,
+            Config.ONNX_ENCODER_TOKENIZER_DIR
+        )
+        # ONNX 编码器直接批量编码，不支持分块（短文本场景足够）
+        def encode_list(texts): #type: ignore
+            return encoder.encode(texts, batch_size=args.batch_size)
+    else:
+        device_str = "cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu"
+        print(f"[embed] using device: {device_str}")
+        st = _load_st_model(device_str)
+        chunked_encoder = ChunkedEncoder(
+            st,
+            max_tokens=args.chunk_size,
+            overlap=args.chunk_overlap,
+            strategy=args.pool
+        )
+        def encode_list(texts):
+            out = np.zeros((len(texts), Config.INPUT_DIM), dtype=np.float32)
+            batch, idx = [], []
+            for i, t in enumerate(texts):
+                if len(t) <= args.chunk_size * 2:
+                    batch.append(t); idx.append(i)
+                    if len(batch) >= args.batch_size:
+                        v = st.encode(batch, convert_to_numpy=True, show_progress_bar=False)
+                        for j, vj in zip(idx, v): out[j] = vj.astype(np.float32)
+                        batch, idx = [], []
+                else:
+                    out[i] = chunked_encoder.encode(t)
+            if batch:
+                v = st.encode(batch, convert_to_numpy=True, show_progress_bar=False)
+                for j, vj in zip(idx, v): out[j] = vj.astype(np.float32)
+            return out
 
     result = {}
     for name in ["train", "val", "test"]:
@@ -394,14 +428,23 @@ def stage_infer(args, texts: list[str] | None = None):
         ]
     if len(texts) == 0:
         return
-    with open(Config.LABELMAP_PATH,encoding="utf-8") as f:
+    with open(Config.LABELMAP_PATH, encoding="utf-8") as f:
         id2label = {int(k): v for k, v in json.load(f)["id2label"].items()}
 
-    device_str = "cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu"
-    st = _load_st_model(device_str)
-    sess = ort.InferenceSession(Config.ONNX_PATH, providers=["CPUExecutionProvider"])
+    # 选择编码器
+    if os.path.exists(Config.ONNX_ENCODER_PATH):
+        print(f"[infer] 使用 ONNX 编码器: {Config.ONNX_ENCODER_PATH}")
+        encoder = _load_onnx_encoder(
+            Config.ONNX_ENCODER_PATH,
+            Config.ONNX_ENCODER_TOKENIZER_DIR
+        )
+        embs = encoder.encode(texts)
+    else:
+        device_str = "cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu"
+        st = _load_st_model(device_str)
+        embs = st.encode(texts, convert_to_numpy=True, show_progress_bar=False).astype(np.float32)
 
-    embs = st.encode(texts, convert_to_numpy=True, show_progress_bar=False).astype(np.float32)
+    sess = ort.InferenceSession(Config.ONNX_PATH, providers=["CPUExecutionProvider"])
     logits = sess.run(["logits"], {"input": embs})[0]
     probs = np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True) # type: ignore
     top_k = args.top_k

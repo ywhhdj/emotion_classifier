@@ -133,6 +133,11 @@ def parse_args(argv=None):
             "default":Config.USE_MULTILINGUAL_AUG,
             "help":"是否使用多语言增强，默认 True",
         },
+        "backend":{
+            "default":"auto",
+            "choices":["auto", "pytorch", "onnx"],
+            "help":"编码器后端：auto 自动检测，pytorch 强制 PyTorch，onnx 强制 ONNX",
+        },
     }
     for k, v in args.items():
         p.add_argument(f"--{k}", **v)
@@ -153,7 +158,7 @@ def main(argv=None):
 
     if run_all or "clean" in stages: df_clean = stage_clean(args)
     if run_all or "split" in stages: split = stage_split(args, df_clean)
-    if run_all or "embed" in stages: emb = stage_embed(args, split)
+    if run_all or "embed" in stages: emb = stage_embed(args, split, backend=args.backend)
     if run_all or "train" in stages:
         nl = split["num_labels"] if split else json.load(open(Config.LABELMAP_PATH))["num_labels"]
         stage_train(args, emb, nl)

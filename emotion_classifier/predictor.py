@@ -192,21 +192,22 @@ def find_encoder_onnx(model_dir: Path) -> Optional[Path]:
 
 class EmotionClassifier:
     """
-    多语言情感分类器（19 种情感，中英日）。
+        多语言情感分类器（19 种情感，中英日）。
 
-    用法:
-        clf = EmotionClassifier()              # 自动选择后端
-        clf = EmotionClassifier(backend='onnx')
-        clf = EmotionClassifier(backend='pytorch')
-
-        result = clf.predict("脸颊泛红，偷偷瞄了你一眼")
-        # [('害羞', 0.80), ('生气', 0.12), ('高兴', 0.03)]
-
-    模型文件管理:
-        - 自动匹配 emotion_classifier*.onnx（支持 fp16/int8 变体）
-        - 首次使用自动从 GitHub 下载
-        - 存储于 ~/emotion_classifier/models/
-        - 调用 clf.update_models() 强制更新
+        Examples
+            ```python
+            clf = EmotionClassifier()              # 自动选择后端
+            clf = EmotionClassifier(backend='onnx')
+            clf = EmotionClassifier(backend='pytorch')
+            clf.init()
+            result = clf.predict("脸颊泛红，偷偷瞄了你一眼")
+            # [('害羞', 0.80), ('生气', 0.12), ('高兴', 0.03)]
+            ```
+        ModelManager
+            - 自动匹配 emotion_classifier*.onnx（支持 fp16/int8 变体）
+            - 首次使用自动从 GitHub 下载
+            - 存储于 ~/emotion_classifier/models/
+            - 调用 clf.update_models() 强制更新
     """
 
     def __init__(
