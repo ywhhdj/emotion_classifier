@@ -8,7 +8,7 @@
 
 
 ```bash
-pip install emotion-classifier
+pip install emotion-classifierxxx.wheel
 ```
 
 或从源码安装：
