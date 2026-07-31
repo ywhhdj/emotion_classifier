@@ -108,11 +108,9 @@ class ModelConfig:
     }
 
     @classmethod
-    def load_label_map(cls,model_dir: Path) -> Path:
-        lm = model_dir / "label_map.json"
-        if lm.exists():
-            return lm
-        return Path(ModelConfig.get_resource_path("data/label_map.json"))
+    def load_label_map(cls) -> Path:
+        pkg_dir = Path(__file__).resolve().parent
+        return pkg_dir / 'data' / 'label_map.json'
 
     @classmethod
     def get_resource_path(cls, relative_path) -> Path:

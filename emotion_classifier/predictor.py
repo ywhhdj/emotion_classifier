@@ -223,7 +223,7 @@ class EmotionClassifier:
         self.encoder_path = encoder_path
     
     def load_label_map(self):
-        label_map_path = ModelConfig.load_label_map(self.model_dir)
+        label_map_path = ModelConfig.load_label_map()
         with open(label_map_path, "r", encoding="utf-8") as f:
             mapping = json.load(f)
         self.id2label = {int(k): v for k, v in mapping["id2label"].items()}

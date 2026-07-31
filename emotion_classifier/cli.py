@@ -99,7 +99,7 @@ def main(argv=None):
 
     # ── --labels: 列出标签 ──
     if args.labels:
-        lm_path = ModelConfig.load_label_map(model_dir)
+        lm_path = ModelConfig.load_label_map()
         if not lm_path.exists():
             print(f"[错误] 找不到 {lm_path}", file=sys.stderr)
             print("请先运行一次 emotion-classify 以下载模型文件", file=sys.stderr)
