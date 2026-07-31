@@ -223,7 +223,7 @@ class EmotionClassifier:
         self.encoder_path = encoder_path
     
     def load_label_map(self):
-        label_map_path = self.model_dir / "label_map.json"
+        label_map_path = ModelConfig.load_label_map(self.model_dir)
         with open(label_map_path, "r", encoding="utf-8") as f:
             mapping = json.load(f)
         self.id2label = {int(k): v for k, v in mapping["id2label"].items()}
@@ -250,7 +250,6 @@ class EmotionClassifier:
         self._init_encoder(self.encoder_path)
 
     def _init_encoder(self, encoder_path: Optional[str]):
-        """初始化文本编码器（ONNX 或 SentenceTransformer）。"""
         if encoder_path:
             enc_path = Path(encoder_path)
             if enc_path.exists() and enc_path.suffix == ".onnx":

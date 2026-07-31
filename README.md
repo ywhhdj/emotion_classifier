@@ -50,6 +50,8 @@ from emotion_classifier import EmotionClassifier
 
 # 初始化（自动检测 ONNX / PyTorch 后端）
 clf = EmotionClassifier()
+#请先初始化模型
+clf.init()
 
 # 单条预测
 result = clf.predict("脸颊泛红，偷偷瞄了你一眼", top_k=3)
@@ -168,6 +170,8 @@ class EmotionAnalysisTool(BaseTool):
     def __init__(self):
         super().__init__()
         self.clf = EmotionClassifier()
+        #请先初始化模型
+        self.clf.init()
 
     def _run(self, query: str) -> str:
         predictions = self.clf.predict(query, top_k=3)
@@ -186,6 +190,8 @@ from emotion_classifier import EmotionClassifier
 
 app = FastAPI()
 clf = EmotionClassifier()
+#请先初始化模型
+clf.init()
 
 class Request(BaseModel):
     text: str

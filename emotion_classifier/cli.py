@@ -87,15 +87,7 @@ def _resolve_model_dir(args_model_dir):
     """解析模型目录路径。"""
     if args_model_dir:
         return Path(args_model_dir)
-    # 默认路径
     return ModelConfig.default_model_dir()
-
-def _load_label_map(model_dir: Path) -> Path:
-    lm = model_dir / "label_map.json"
-    if lm.exists():
-        return lm
-    # 尝试打包后的 data 目录
-    return Path(ModelConfig.get_resource_path("data/label_map.json"))
 
 def main(argv=None):
     parser = build_parser()
@@ -107,7 +99,7 @@ def main(argv=None):
 
     # ── --labels: 列出标签 ──
     if args.labels:
-        lm_path = _load_label_map(model_dir)
+        lm_path = ModelConfig.load_label_map(model_dir)
         if not lm_path.exists():
             print(f"[错误] 找不到 {lm_path}", file=sys.stderr)
             print("请先运行一次 emotion-classify 以下载模型文件", file=sys.stderr)
