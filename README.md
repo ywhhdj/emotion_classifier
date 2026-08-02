@@ -225,6 +225,7 @@ def predict(req: Request):
 |------|------|
 | `emotion_classifier.pt` | PyTorch 模型权重 |
 | `emotion_classifier.onnx` | ONNX 模型（推荐部署用） |
+| `emotion_classifier_fp16.onnx` | ONNX 量化版模型|
 | `label_map.json` | 标签映射文件 |
 | `embeddings.npz` | 预计算嵌入缓存（可选） |
 
