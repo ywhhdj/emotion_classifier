@@ -56,7 +56,6 @@ clf.init()
 # 单条预测
 result = clf.predict("脸颊泛红，偷偷瞄了你一眼", top_k=3)
 print(result)
-# [[('害羞', 0.80), ('生气', 0.12), ('高兴', 0.03)]]
 
 # 批量预测
 texts = [
@@ -118,9 +117,15 @@ emotion-classify "test" --verbose
 ```bash
 $ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --top-k 3
 「底下头，脸颊泛红，偷偷瞄了你一眼」
-  #1 害羞    74.57%  ██████████████
-  #2 生气    8.11%  █
-  #3 无奈    4.80%  
+  #1 害羞     31.75%  ██████
+  #2 高兴     18.81%  ███
+  #3 无奈     14.49%  ██
+
+$ emotion-classify "私は嬉しくてうなだれた"     
+「私は嬉しくてうなだれた」
+  #1 兴奋     28.07%  █████
+  #2 无奈     25.54%  █████
+  #3 高兴     22.08%  ████
 
 $ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --json
 [
@@ -129,19 +134,29 @@ $ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --json
     "predictions": [
       {
         "label": "害羞",
-        "score": 0.7457
+        "score": 0.3175
       },
       {
-        "label": "生气",
-        "score": 0.0811
+        "label": "高兴",
+        "score": 0.1881
       },
       {
         "label": "无奈",
-        "score": 0.048
+        "score": 0.1449
       }
     ]
   }
 ]
+```
+# 值得注意的是，不准确情况
+```bash
+$ emotion-classify "I happily lowered my head"  
+「I happily lowered my head」
+  #1 无奈     40.09%  ████████
+  #2 害羞     22.34%  ████
+  #3 高兴     7.05%  █
+
+#多语言情况预测准确不到70%
 ```
 
 # 训练模型
