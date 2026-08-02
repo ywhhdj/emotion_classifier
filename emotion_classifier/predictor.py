@@ -6,9 +6,7 @@ import sys
 from pathlib import Path
 from typing import Literal, Optional, Dict, List, Tuple
 import numpy as np
-
 from .model import ModelConfig, ONNXEncoder
-
 
 class AsyncModelDownloader:
     """异步下载模型文件，带进度条和 SHA256 校验。"""
@@ -223,8 +221,15 @@ class EmotionClassifier:
         self.backend = backend
         self.auto_download = auto_download
         self.encoder_path = encoder_path
-        from torch import cuda
-        self.device = device or ( "cuda" if cuda.is_available() else "cpu")
+        if device is None:
+            try:
+                from torch import cuda
+                self.device = "cuda" if cuda.is_available() else "cpu"
+            except ImportError:
+                self.device = "cpu"
+                return
+        else:
+            self.device = device
     
     def load_label_map(self):
         label_map_path = ModelConfig.load_label_map()
@@ -373,8 +378,8 @@ class EmotionClassifier:
                 "PyTorch 后端需要安装 torch 和 sentence-transformers。\n"
                 "请执行: pip install emotion-classifier[pytorch]"
             )
-        from emotion_classifier.model import EmotionClassifierNet
-        self.model = EmotionClassifierNet(
+        from emotion_classifier.model.pytorch import EmotionClassifier
+        self.model = EmotionClassifier(
             input_dim=384,
             num_classes=self.num_labels,
             hidden_dim=256,

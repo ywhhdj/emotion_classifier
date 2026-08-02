@@ -1,22 +1,23 @@
 import math
 from pathlib import Path
+import random
 import re
-from typing import Literal
 import unicodedata
-from sentence_transformers import SentenceTransformer
 from sklearn.calibration import LabelEncoder
 from sklearn.model_selection import train_test_split
 import pandas as pd
-from sklearn.utils import resample
+from augment import EDAAugmentor
 from config import Config
 import torch
-from models import ChunkedEncoder, ONNXEncoder
+from models import ChunkedEncoder, CombinedLoss, ONNXEncoder
 import os
 import json
 import numpy as np
 from sklearn.metrics import classification_report, accuracy_score
 from torch.utils.data import DataLoader, TensorDataset
-from models import EmotionClassifierNet
+from models import EmotionClassifier
+from utils import mixup
+import torch.nn.functional as F
 
 class TextCleaner:
     _RE_ZERO_WIDTH = re.compile(r'[\u200b-\u200d\u2028-\u202f\ufeff]')
@@ -54,6 +55,7 @@ def _get_model_path() -> str:
     # 从 HuggingFace 下载（SentenceTransformer 内部处理）
     print(f"[model] 首次运行，正在下载 {Config.MODEL_NAME} (~130MB)...")
     print(f"[model] 缓存目录: {cache}")
+    from sentence_transformers import SentenceTransformer
     st = SentenceTransformer(Config.MODEL_NAME)
     # 保存到缓存目录供后续使用
     st.save(str(model_path))
@@ -76,22 +78,31 @@ def _load_onnx_encoder(onnx_path: str, tokenizer_dir: str | None = None) -> ONNX
         tokenizer_name=f"sentence-transformers/{Config.MODEL_NAME}"
     )
 
-def _load_st_model(device_str: str) -> SentenceTransformer:
+def _load_st_model(device_str: str):
     model_path = _get_model_path()
+    from sentence_transformers import SentenceTransformer
     st = SentenceTransformer(model_path)
     if device_str == "cuda":
         st = st.to(torch.device("cuda"))
     return st
 
-def oversample_minority(df, min_samples=20):
-    """对样本数少于 min_samples 的类别进行过采样"""
-    groups = df.groupby('label')
-    dfs = []
-    for label, group in groups:
-        if len(group) < min_samples:
-            group = resample(group, replace=True, n_samples=min_samples, random_state=42)
-        dfs.append(group)
-    return pd.concat(dfs).reset_index(drop=True)
+def oversample_minority(df,minority_threshold=30):
+    augmentor = EDAAugmentor()
+    new_rows = []
+    class_counts = df['label'].value_counts()
+    for _, row in df.iterrows():
+        new_rows.append(row)
+        if class_counts[row['label']] < minority_threshold:
+            # 对少数类增强
+            if random.random() < 0.3:
+                aug = row.copy()
+                aug["text"] = augmentor.random_delete(row["text"], p=0.1)
+                new_rows.append(aug)
+            if random.random() < 0.3:
+                aug = row.copy()
+                aug["text"] = augmentor.punctuation(row["text"])
+                new_rows.append(aug)
+    return pd.DataFrame(new_rows).drop_duplicates(subset=["text","label"]).reset_index(drop=True)
 
 
 def stage_clean(args, df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
@@ -122,7 +133,7 @@ def stage_clean(args, df_raw: pd.DataFrame | None = None) -> pd.DataFrame:
 
     os.makedirs(Config.OUTPUT_PATH, exist_ok=True)
     df.to_csv(os.path.join(Config.OUTPUT_PATH, "clean_data.csv"), index=False, encoding="utf-8-sig")
-    df = oversample_minority(df)
+    df=oversample_minority(df)
     return df
 
 
@@ -256,6 +267,10 @@ def _build_loaders(emb: dict, args, num_labels: int):
         )
     return loaders
 
+def update_dropout(model,p):
+    for m in model.modules():
+        if isinstance(m,torch.nn.Dropout):
+            m.p=p
 
 def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
     if emb is None: emb = np.load(Config.EMBED_PATH)
@@ -265,10 +280,11 @@ def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
     device = torch.device("cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu")
     loaders = _build_loaders(emb, args, num_labels) # type: ignore
 
-    model = EmotionClassifierNet(
+    model = EmotionClassifier(
         input_dim=Config.INPUT_DIM, 
         num_classes=num_labels, # type: ignore
         hidden_dim=args.hidden_dim,
+        proj_dim=Config.PROJ_DIM,
         dropout=args.dropout
     ).to(device)
 
@@ -277,45 +293,54 @@ def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.xavier_uniform_(m.weight)
             if m.bias is not None: torch.nn.init.zeros_(m.bias)
-    if Config.USE_FOCAL_LOSS:
-        from models import FocalLoss
-        from collections import Counter
-        label_ids = emb["y_train"]   # type: ignore
-        counts = Counter(label_ids)
-        weights = [1.0 / counts[i] for i in range(num_labels)] # type: ignore
-        weights = torch.tensor(weights, dtype=torch.float).to(device)
-        weights = weights / weights.sum() * num_labels   # type: ignore 归一化 
-        criterion = FocalLoss(gamma=Config.FOCAL_GAMMA, alpha=weights)
-    else:
-        criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    total_steps = max(1, args.epochs * len(loaders["train"]))
-    warmup_steps = int(total_steps * args.warmup_ratio)
-
-    def lr_lambda(step):
-        if step < warmup_steps:
-            return float(step) / float(max(1, warmup_steps))
-        progress = float(step - warmup_steps) / float(max(1, total_steps - warmup_steps))
-        return 0.5 * (1.0 + math.cos(math.pi * progress))
-
+    weights = None
+    # if Config.USE_FOCAL_LOSS:
+    #     from collections import Counter
+    #     counts = Counter(emb["y_train"]) # type: ignore
+    #     weights = torch.tensor([1.0 / max(counts[i], 1) for i in range(num_labels)], dtype=torch.float) # type: ignore
+    #     weights = weights / weights.sum() * num_labels # type: ignore  # 归一化
+    #     weights = weights.to(device)
+    #     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    #     total_steps = max(1, args.epochs * len(loaders["train"]))
+    #     warmup_steps = int(total_steps * args.warmup_ratio)
+    criterion = CombinedLoss(
+        num_classes=num_labels,
+        margin=Config.MARGIN,
+        topk_ratio=Config.TOPK_RATIO,
+        smoothing=Config.SMOOTHING,
+        weights=weights
+    ).to(device)
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=args.lr,
+        weight_decay=args.weight_decay
+    )
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='max', factor=0.5, patience=5
     )
 
     best_val, bad_epochs, history = 0.0, 0, []
-    for ep in range(1, args.epochs + 1):
+    for epoch in range(1, args.epochs + 1):
+        drop =  0.1 + (0.6-0.1) * (1+math.cos(math.pi*epoch/args.epochs))/2
+        update_dropout(model,drop)
         model.train()
         tot_loss, correct, total = 0.0, 0, 0
         for xb, yb in loaders["train"]:
             xb, yb = xb.to(device, non_blocking=True), yb.to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
-            logits = model(xb)
-            loss = criterion(logits, yb)
+            mixed_xb, ya, yb2, lam = mixup(xb, yb)
+            logits, feat, _ = model(mixed_xb)   # 不传入 label，避免 ArcFace
+
+            # 对两个标签分别计算 CombinedLoss，然后加权
+            loss_a = criterion(logits, ya, feat)
+            loss_b = criterion(logits, yb2, feat)
+            loss = lam * loss_a + (1 - lam) * loss_b
+
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), Config.GRAD_CLIP)
             optimizer.step()
             tot_loss += loss.item() * len(yb)
-            correct += (logits.argmax(1) == yb).sum().item()
+            correct += (logits.argmax(1) == yb).sum().item()  # 此处 yb 是原始标签，用于计算准确率
             total += len(yb)
 
         model.eval()
@@ -323,13 +348,13 @@ def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
         with torch.no_grad():
             for xb, yb in loaders["val"]:
                 xb, yb = xb.to(device, non_blocking=True), yb.to(device, non_blocking=True)
-                pred = model(xb).argmax(1)
+                pred = model(xb)[0].argmax(1)
                 v_correct += (pred == yb).sum().item()
                 v_total += len(yb)
         val_acc = v_correct / max(1, v_total)
-        row = (ep, tot_loss/max(1,total), correct/max(1,total), val_acc)
+        row = (epoch, tot_loss/max(1,total), correct/max(1,total), val_acc)
         history.append(row)
-        print(f"[train] ep {ep:3d} | loss {row[1]:.4f} | train {row[2]:.4f} | val {row[3]:.4f}")
+        print(f"[train] ep {epoch:3d} | loss {row[1]:.4f} | train {row[2]:.4f} | val {row[3]:.4f}")
         scheduler.step(val_acc)
         if val_acc > best_val + 1e-5:
             best_val, bad_epochs = val_acc, 0
@@ -337,7 +362,7 @@ def stage_train(args, emb: dict | None = None, num_labels: int | None = None):
         else:
             bad_epochs += 1
             if bad_epochs >= args.early_stop:
-                print(f"[train] 早停 @ ep {ep} (best val={best_val:.4f})")
+                print(f"[train] 早停 @ ep {epoch} (best val={best_val:.4f})")
                 break
     print(f"[train] 最佳验证准确率: {best_val:.4f} → {Config.MODEL_PATH}")
     return model
@@ -350,10 +375,11 @@ def stage_eval(args, emb: dict | None = None, id2label: dict | None = None):
     num_labels = len(id2label) # type: ignore
 
     device = torch.device("cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu")
-    model = EmotionClassifierNet(
+    model = EmotionClassifier(
         input_dim=Config.INPUT_DIM,
         num_classes=num_labels,
         hidden_dim=args.hidden_dim, 
+        proj_dim=Config.PROJ_DIM,
         dropout=args.dropout
     ).to(device)
     model.load_state_dict(torch.load(Config.MODEL_PATH, map_location=device))
@@ -362,7 +388,7 @@ def stage_eval(args, emb: dict | None = None, id2label: dict | None = None):
     X_test = torch.from_numpy(emb["X_test"]).to(device) # type: ignore
     y_test = emb["y_test"] # type: ignore
     with torch.no_grad():
-        logits = model(X_test)
+        logits, _,_ = model(X_test)
         preds = logits.argmax(1).cpu().numpy()
     acc = accuracy_score(y_test, preds)
     print(f"\n[eval] Test Accuracy: {acc:.4f}")
@@ -381,10 +407,11 @@ def stage_onnx(args, num_labels: int | None = None):
         with open(Config.LABELMAP_PATH) as f: num_labels = json.load(f)["num_labels"]
 
     device = torch.device("cpu")  # ONNX 导出必须在 CPU
-    model = EmotionClassifierNet(
+    model = EmotionClassifier(
         input_dim=Config.INPUT_DIM,
         num_classes=num_labels, # type: ignore
         hidden_dim=args.hidden_dim,
+        proj_dim=Config.PROJ_DIM,
         dropout=args.dropout
     ).to(device)
     model.load_state_dict(torch.load(Config.MODEL_PATH, map_location=device))

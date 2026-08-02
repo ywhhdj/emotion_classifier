@@ -75,8 +75,6 @@ class ONNXEncoder:
             embeddings = embeddings / np.clip(norms, 1e-9, None)
         return embeddings
 
-
-
 class ModelConfig:
     GITHUB_REPO = "https://github.com/ywhhdj/emotion_classifier"
     GITHUB_TAG  = "v0.1.1"
@@ -110,7 +108,7 @@ class ModelConfig:
     @classmethod
     def load_label_map(cls) -> Path:
         pkg_dir = Path(__file__).resolve().parent
-        return pkg_dir / 'data' / 'label_map.json'
+        return pkg_dir/ ".." / 'data' / 'label_map.json'
 
     @classmethod
     def get_resource_path(cls, relative_path) -> Path:
@@ -205,25 +203,3 @@ class ModelConfig:
         all_files = glob.glob(str(model_dir / "emotion_classifier*.onnx"))
         all_files.sort(key=_priority)
         return [Path(f) for f in all_files]
-
-from torch.nn import Module
-
-class EmotionClassifierNet(Module):
-    """轻量多语言情感分类头。"""
-    def __init__(self, input_dim=384, num_classes=19, hidden_dim=256, dropout=0.3):
-        super().__init__()
-        from torch.nn import Sequential, Linear, BatchNorm1d, ReLU, Dropout
-        self.net = Sequential(
-            Linear(input_dim, hidden_dim),
-            BatchNorm1d(hidden_dim),
-            ReLU(),
-            Dropout(dropout),
-            Linear(hidden_dim, max(hidden_dim // 2, num_classes)),
-            BatchNorm1d(max(hidden_dim // 2, num_classes)),
-            ReLU(),
-            Dropout(dropout),
-            Linear(max(hidden_dim // 2, num_classes), num_classes),
-        )
-
-    def forward(self, x):
-        return self.net(x)

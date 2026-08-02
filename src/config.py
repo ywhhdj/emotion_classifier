@@ -11,7 +11,8 @@ class Config:
             base = sys._MEIPASS #type: ignore
         except AttributeError:
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return os.path.join(base, relative_path)
+        return os.path.normpath(os.path.join(base, relative_path))
+
     ONNX_ENCODER_PATH = os.environ.get("EMO_ONNX_ENCODER", get_base_path("models/model_quint8_avx2.onnx"))
     # ONNX 编码器配套的 tokenizer 目录（若不存在则自动从 HuggingFace 下载）
     ONNX_ENCODER_TOKENIZER_DIR = os.environ.get("EMO_ONNX_TOKENIZER", get_base_path("models/tokenizer"))
@@ -28,26 +29,30 @@ class Config:
     # 模型 
     MODEL_NAME   = "paraphrase-multilingual-MiniLM-L12-v2"
     INPUT_DIM    = 384
+    PROJ_DIM     = 128
     HIDDEN_DIM   = 256 #256
-    DROPOUT      = 0.6 #0.5
+    DROPOUT      = 0.5 #0.5
     NUM_LABELS   = 19          # 仅作默认/校验，实际以数据为准
 
     # 训练参数 
+    MARGIN        = 0.5  # 用于计算 margin 损失的 margin
+    TOPK_RATIO    = 0.5 # 用于计算 top-k 损失的 top-k 比例
+    SMOOTHING     = 0.05 # 用于平滑标签的平滑因子
     TEST_SIZE     = 0.2
     VAL_SIZE      = 0.10
     RANDOM_STATE  = 42
     BATCH_SIZE    = 128
-    EPOCHS        = 60 
-    LR            = 1e-3
-    WEIGHT_DECAY  = 1e-3
+    EPOCHS        = 120 
+    LR            = 5e-4
+    WEIGHT_DECAY  = 1e-2
     WARMUP_RATIO  = 0.05 # 学习率预热比例
     GRAD_CLIP     = 1.0
-    EARLY_STOP    = 22   # 验证集连续 N 轮不提升则停止
+    EARLY_STOP    = 40   # 验证集连续 N 轮不提升则停止
     FOCAL_GAMMA   = 2.0
     USE_FOCAL_LOSS = True # 是否使用类别权重
     TEST_SIZE     = 0.15
     RANDOM_STATE  = 42
-    BATCH_SIZE    = 128
+    BATCH_SIZE    = 64
 
     # 推理 
     MAX_SEQ_LEN   = 128        # MiniLM 最大长度
