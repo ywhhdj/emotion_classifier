@@ -244,3 +244,6 @@ def predict(req: Request):
 ## License
 
 MIT
+
+# 感谢以下开源项目的支持：
+ - [paraphrase-multilingual-MiniLM-L12-v2](https://hf-mirror.com/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)
