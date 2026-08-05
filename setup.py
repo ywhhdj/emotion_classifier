@@ -3,11 +3,11 @@ from setuptools import setup, find_namespace_packages
 setup(
     name="emotion-classifier",
     version="0.1.0",
-    packages=find_namespace_packages(include=["emotion_classifier", "emotion_classifier.*"]),
+    packages=find_namespace_packages(include=["src", "src.*"]),
     include_package_data=True,
     package_data={
-        "emotion_classifier": ["data/*"],
-        "emotion_classifier.data": ["*"],
+        "src": ["data/*"],
+        "src.data": ["*"],
     },
     install_requires=[
         'onnxruntime>=1.14',

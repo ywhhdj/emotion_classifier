@@ -21,8 +21,8 @@ from pathlib import Path
 # 确保可以从上级目录导入 emotion_classifier 包
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from emotion_classifier import EmotionClassifier
-from emotion_classifier.models.config import ModelRepository, ModelConfig
+from src import EmotionClassifier
+from src.models.config import ModelRepository, ModelConfig
 
 
 def build_parser() -> argparse.ArgumentParser:

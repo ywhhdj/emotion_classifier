@@ -1,4 +1,4 @@
-from emotion_classifier.cli import main
+from src.cli import main
 if __name__ == "__main__":
     # emotion_classifier = EmotionClassifier(
     #     model_dir="models"
