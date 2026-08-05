@@ -1,6 +1,6 @@
 # Emotion Classifier
 
-多语言情感分类模型包，支持 **19 种情感标签**，覆盖 **中文、英文、日文**。
+多语言情感分类模型包，支持 **18 种情感标签**，覆盖 **中文、英文、日文**。
 
 ## 安装
 
@@ -49,8 +49,6 @@ from emotion_classifier import EmotionClassifier
 
 # 初始化（自动检测 ONNX / PyTorch 后端）
 clf = EmotionClassifier()
-#请先初始化模型
-clf.init()
 
 # 单条预测
 result = clf.predict("脸颊泛红，偷偷瞄了你一眼", top_k=3)
@@ -116,15 +114,15 @@ emotion-classify "test" --verbose
 ```bash
 $ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --top-k 3
 「底下头，脸颊泛红，偷偷瞄了你一眼」
-  #1 害羞     31.75%  ██████
-  #2 高兴     18.81%  ███
-  #3 无奈     14.49%  ██
+  #1 害羞     36.33%  ███████
+  #2 疑惑     18.02%  ███
+  #3 生气     15.97%  ███
 
 $ emotion-classify "私は嬉しくてうなだれた"     
 「私は嬉しくてうなだれた」
-  #1 兴奋     28.07%  █████
-  #2 无奈     25.54%  █████
-  #3 高兴     22.08%  ████
+  #1 高兴     58.64%  ███████████
+  #2 无奈     11.04%  ██
+  #3 惊讶     5.04%  █
 
 $ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --json
 [
@@ -133,15 +131,15 @@ $ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --json
     "predictions": [
       {
         "label": "害羞",
-        "score": 0.3175
+        "score": 0.36329999566078186
       },
       {
-        "label": "高兴",
-        "score": 0.1881
+        "label": "疑惑",
+        "score": 0.18019999563694
       },
       {
-        "label": "无奈",
-        "score": 0.1449
+        "label": "生气",
+        "score": 0.15970000624656677
       }
     ]
   }
@@ -150,10 +148,10 @@ $ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --json
 # 值得注意的是，不准确情况
 ```bash
 $ emotion-classify "I happily lowered my head"  
-「I happily lowered my head」
-  #1 无奈     40.09%  ████████
-  #2 害羞     22.34%  ████
-  #3 高兴     7.05%  █
+I happily lowered my head」
+  #1 害羞     28.26%  █████
+  #2 高兴     14.85%  ██
+  #3 惊讶     10.45%  ██
 
 #多语言情况预测准确不到70%
 ```
@@ -224,7 +222,7 @@ def predict(req: Request):
 |------|------|
 | `emotion_classifier.pt` | PyTorch 模型权重 |
 | `emotion_classifier.onnx` | ONNX 模型（推荐部署用） |
-| `emotion_classifier_fp16.onnx` | ONNX 量化版模型|
+| `emotion_classifier_fp16.onnx` | ONNX float16 量化版模型 (注意，量化后准确度会下降，不推荐部署)|
 | `label_map.json` | 标签映射文件 |
 | `embeddings.npz` | 预计算嵌入缓存（可选） |
 
@@ -238,7 +236,6 @@ def predict(req: Request):
 - torch>=1.12
 - scikit-learn>=1.0
 - httpx>=0.24
-- tqdm>=4.62
 
 ## License
 

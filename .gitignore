@@ -6,7 +6,7 @@ output/
 
 # C extensions
 *.so
-models/
+modelsx
 to_onnx
 
 # Distribution / packaging
