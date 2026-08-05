@@ -182,8 +182,7 @@ class EmotionAnalysisTool(BaseTool):
     def __init__(self):
         super().__init__()
         self.clf = EmotionClassifier()
-        #请先初始化模型
-        self.clf.init()
+        ##初始化可以自行决定
 
     def _run(self, query: str) -> str:
         predictions = self.clf.predict(query, top_k=3)
@@ -202,8 +201,7 @@ from emotion_classifier import EmotionClassifier
 
 app = FastAPI()
 clf = EmotionClassifier()
-#请先初始化模型
-clf.init()
+#初始化可以自行决定
 
 class Request(BaseModel):
     text: str
