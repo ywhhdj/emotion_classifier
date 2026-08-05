@@ -6,71 +6,76 @@ load_dotenv()
 
 class Config:
     @staticmethod
-    def get_base_path(relative_path:str):
+    def get_base_path(relative_path: str):
         try:
-            base = sys._MEIPASS #type: ignore
+            base = sys._MEIPASS  # type: ignore
         except AttributeError:
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         return os.path.normpath(os.path.join(base, relative_path))
 
-    ONNX_ENCODER_PATH = os.environ.get("EMO_ONNX_ENCODER", get_base_path("models/model_quint8_avx2.onnx"))
-    # ONNX 编码器配套的 tokenizer 目录（若不存在则自动从 HuggingFace 下载）
-    ONNX_ENCODER_TOKENIZER_DIR = os.environ.get("EMO_ONNX_TOKENIZER", get_base_path("models/tokenizer"))
+    @classmethod
+    @property
+    def ONNX_ENCODER_PATH(cls):
+        return os.environ.get("EMO_ONNX_ENCODER", cls.get_base_path("models/model_quint8_avx2.onnx"))
+
+    @classmethod
+    @property
+    def ONNX_ENCODER_TOKENIZER_DIR(cls):
+        return os.environ.get("EMO_ONNX_TOKENIZER", cls.get_base_path("models/tokenizer"))
+
     OUTPUT_PATH   = os.environ.get("EMO_OUTPUT", get_base_path("output"))
     DATA_PATH     = os.environ.get("EMO_DATA", get_base_path("data/emotion.csv"))
     EMBED_PATH    = os.environ.get("EMO_EMBED", get_base_path("embeddings.npz"))
     MODEL_PATH    = os.environ.get("EMO_MODEL", get_base_path("model/emotion_classify.pt"))
     ONNX_PATH     = os.environ.get("EMO_ONNX",  get_base_path("model/emotion_classifier.onnx"))
+    ONNX_QUANT_PATH = os.environ.get("EMO_ONNX_QUANT", get_base_path("model/emotion_classifier_int8.onnx"))
     LABELMAP_PATH = os.environ.get("EMO_LABEL", get_base_path("label_map.json"))
 
     MODEL_CACHE_DIR   = os.environ.get("EMO_CACHE", get_base_path("models"))
     MODEL_AUTO_DOWNLOAD = True
 
-    # 模型 
+    # 模型
     MODEL_NAME   = "paraphrase-multilingual-MiniLM-L12-v2"
     INPUT_DIM    = 384
-    PROJ_DIM     = 128
-    HIDDEN_DIM   = 256 #256
-    DROPOUT      = 0.5 #0.5
-    NUM_LABELS   = 19          # 仅作默认/校验，实际以数据为准
+    HIDDEN_DIM   = 128   # 从 256 降至 128，参数量减少 75%
+    DROPOUT      = 0.3
+    NUM_LABELS   = 18
 
-    # 训练参数 
-    MARGIN        = 0.5  # 用于计算 margin 损失的 margin
-    TOPK_RATIO    = 0.5 # 用于计算 top-k 损失的 top-k 比例
-    SMOOTHING     = 0.05 # 用于平滑标签的平滑因子
-    TEST_SIZE     = 0.2
+    # 训练参数（已清理重复定义）
+    FOCAL_GAMMA   = 2.0
+    USE_FOCAL_LOSS = True
+    TEST_SIZE     = 0.15
     VAL_SIZE      = 0.10
     RANDOM_STATE  = 42
-    BATCH_SIZE    = 128
-    EPOCHS        = 120 
+    BATCH_SIZE    = 64
+    EPOCHS        = 120
     LR            = 5e-4
     WEIGHT_DECAY  = 1e-2
-    WARMUP_RATIO  = 0.05 # 学习率预热比例
     GRAD_CLIP     = 1.0
-    EARLY_STOP    = 40   # 验证集连续 N 轮不提升则停止
-    FOCAL_GAMMA   = 2.0
-    USE_FOCAL_LOSS = True # 是否使用类别权重
-    TEST_SIZE     = 0.15
-    RANDOM_STATE  = 42
-    BATCH_SIZE    = 64
+    EARLY_STOP    = 40
 
-    # 推理 
-    MAX_SEQ_LEN   = 128        # MiniLM 最大长度
-    POOL_STRATEGY = PoolingStrategy.MEAN      # mean / max / weighted
+    # 余弦热重启调度
+    SCHED_T0     = 10
+    SCHED_T_MULT = 2
+    SCHED_ETA_MIN = 1e-6
 
+    # EMA
+    EMA_DECAY    = 0.999
 
-    USE_MULTILINGUAL_AUG = True   # 是否注入英/日增强样本
+    # 推理
+    MAX_SEQ_LEN   = 128
+    POOL_STRATEGY = PoolingStrategy.MEAN
 
-    # 运行模式 
+    USE_MULTILINGUAL_AUG = True
+
+    # 运行模式
     DEVICE = "cuda" if __import__("torch").cuda.is_available() else "cpu"
-    NUM_WORKERS = 0               # DataLoader workers（CPU 上 0 更安全）
+    NUM_WORKERS = 4
     SEED = 42
-    WRITE_FILE = True   # 是否将推理结果写入文件
+    WRITE_FILE = True
 
     @staticmethod
     def ensure_dirs():
         os.makedirs(Config.OUTPUT_PATH, exist_ok=True)
         os.makedirs(Config.MODEL_CACHE_DIR, exist_ok=True)
         os.makedirs(os.path.dirname(Config.MODEL_PATH), exist_ok=True)
-    
-

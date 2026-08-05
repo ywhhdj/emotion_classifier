@@ -1,11 +1,7 @@
 import numpy as np
 import torch
 
-def mixup(
-    x,
-    y,
-    alpha=0.4
-):
+def mixup(x,y,alpha=0.4):
     """MixUp 混合训练。"""
     if alpha <= 0:
         return x, y, y, 1.0

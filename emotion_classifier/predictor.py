@@ -1,458 +1,277 @@
-import os
 import json
-import asyncio
-import hashlib
-import sys
 from pathlib import Path
-from typing import Literal, Optional, Dict, List, Tuple
+import sys
+from typing import Literal, Optional, Dict, List, Tuple, Union
 import numpy as np
-from .model import ModelConfig, ONNXEncoder
+import logging
 
-class AsyncModelDownloader:
-    """异步下载模型文件，带进度条和 SHA256 校验。"""
+from .models.config import ModelConfig, ModelRepository
+from .downloader import AsyncModelDownloader
 
-    def __init__(self, model_dir: Path, timeout: float = 60.0):
-        self.model_dir = Path(model_dir)
-        self.timeout = timeout
-
-    async def _download_one(self, client, filename: str, filepath: Path, verify: bool = True):
-        url = ModelConfig.download_url(filename)
-        print(f"\r  ↓ 下载 {filename} 从 {url}", file=sys.stderr)
-        if filepath.exists() and not verify:
-            return filepath
-
-        tmp_path = filepath.with_suffix(filepath.suffix + ".tmp")
-        try:
-            async with client.stream("GET", url) as response:
-                response.raise_for_status()
-                total = int(response.headers.get("content-length", 0))
-                downloaded = 0
-                chunk_size = 64 * 1024  # 64KB
-
-                with open(tmp_path, "wb") as f:
-                    async for chunk in response.aiter_bytes(chunk_size):
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if total:
-                            pct = downloaded / total * 100
-                            bar_len = int(pct / 5)
-                            bar = "█" * bar_len + "░" * (20 - bar_len)
-                            sys.stderr.write(
-                                f"\r  ↓ {filename:30s} [{bar}] {pct:5.1f}%"
-                            )
-                            sys.stderr.flush()
-            sys.stderr.write("\n")
-
-            os.replace(tmp_path, filepath)
-
-            # SHA256 校验
-            expected = ModelConfig.CHECKSUMS.get(filename)
-            if expected:
-                actual = self._sha256(filepath)
-                actual_full = f"sha256:{actual}"
-                if actual_full != expected:
-                    filepath.unlink(missing_ok=True)
-                    raise ValueError(
-                        f"{filename} 校验失败: "
-                        f"expected={expected[:16]}... got={actual_full[:16]}..."
-                    )
-            return filepath
-        except Exception as e:
-            tmp_path.unlink(missing_ok=True)
-            raise RuntimeError(f"下载 {filename} 失败: {e}") from e
-
-    @staticmethod
-    def _sha256(filepath: Path) -> str:
-        h = hashlib.sha256()
-        with open(filepath, "rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                h.update(chunk)
-        return h.hexdigest()
-
-    async def download(self, filenames: List[str]) -> List[Path]:
-        import httpx
-
-        self.model_dir.mkdir(parents=True, exist_ok=True)
-        paths = [self.model_dir / f for f in filenames]
-
-        # 过滤已存在且校验通过的
-        to_download = []
-        for f in filenames:
-            fp = self.model_dir / f
-            if fp.exists() and ModelConfig.CHECKSUMS.get(f) is None:
-                continue  # 无校验码且已存在 → 跳过
-            elif fp.exists():
-                if self._sha256(fp) == ModelConfig.CHECKSUMS[f]:
-                    continue  # 校验通过 → 跳过
-            to_download.append(f)
-
-        if not to_download:
-            print(f"  ✅ 所有模型文件已就绪 ({self.model_dir})")
-            return paths
-
-        print(f"  ⏬ 需要下载 {len(to_download)} 个文件:")
-        for f in to_download:
-            print(f"     • {f}")
-
-        async with httpx.AsyncClient(
-            timeout=self.timeout,
-            follow_redirects=True,
-        ) as client:
-            await asyncio.gather(*[
-                self._download_one(client, f, self.model_dir / f)
-                for f in to_download
-            ])
-
-        print(f"  ✅ 下载完成 → {self.model_dir}")
-        return [self.model_dir / f for f in filenames]
-
-    @staticmethod
-    def download_sync(filenames: List[str], model_dir: Path) -> List[Path]:
-        """同步包装：在同步代码中调用异步下载。"""
-        downloader = AsyncModelDownloader(model_dir)
-        try:
-            loop = asyncio.get_running_loop()
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, downloader.download(filenames)).result()
-        except RuntimeError:
-            return asyncio.run(downloader.download(filenames))
-
-
-def _priority_sort(files: List[str]) -> List[str]:
-    """按优先级排序：原始 > fp16 > int8/quant > 其他。"""
-    def _pri(name: str) -> int:
-        n = name.lower()
-        if n == "emotion_classifier.onnx":
-            return 0
-        elif "fp16" in n:
-            return 1
-        elif "int8" in n or "quant" in n:
-            return 2
-        else:
-            return 3
-    return sorted(files, key=_pri)
-
-
-def find_classifier_onnx(model_dir: Path) -> Optional[Path]:
-    """
-    在 model_dir 中按优先级查找分类头 ONNX 文件。
-    匹配: emotion_classifier.onnx > *_fp16.onnx > *_int8.onnx > *_*.onnx
-
-    Returns
-    -------
-    Optional[Path]  找到返回路径，否则 None
-    """
-    if not model_dir.exists():
-        return None
-
-    # 1. 精确匹配（最高优先级）
-    exact = model_dir / "emotion_classifier.onnx"
-    if exact.exists():
-        return exact
-
-    # 2. 通配符匹配（按优先级排序）
-    import glob
-    patterns = ModelConfig.CLASSIFIER_PATTERNS
-    all_matches = []
-    for pat in patterns:
-        matches = glob.glob(str(model_dir / pat))
-        all_matches.extend(matches)
-
-    if not all_matches:
-        return None
-
-    all_matches = _priority_sort(all_matches)
-    return Path(all_matches[0])
-
-
-def find_encoder_onnx(model_dir: Path) -> Optional[Path]:
-    """
-    在 model_dir 中查找编码器 ONNX 文件。
-    优先使用配置中指定的 ENCODER_ONNX，否则通配符匹配 model_*.onnx。
-    """
-    if not model_dir.exists():
-        return None
-
-    # 1. 精确匹配配置的编码器
-    enc = model_dir / ModelConfig.ENCODER_ONNX
-    if enc.exists():
-        return enc
-
-    # 2. 通配符匹配
-    import glob
-    matches = glob.glob(str(model_dir / "model_*.onnx"))
-    if matches:
-        return Path(sorted(matches)[0])
-
-    return None
-
+logging.basicConfig(
+    level=logging.INFO,
+    format=" [%(levelname)s] : %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]  # 输出到 stdout，避免被重定向
+)
+logger = logging.getLogger(__name__)
 
 class EmotionClassifier:
     """
-        多语言情感分类器（19 种情感，中英日）。
+    多语言情感分类器（19 种情感，支持中英日）。
 
-        Examples
-            ```python
-            clf = EmotionClassifier()              # 自动选择后端
-            clf = EmotionClassifier(backend='onnx')
-            clf = EmotionClassifier(backend='pytorch')
-            clf.init()
-            result = clf.predict("脸颊泛红，偷偷瞄了你一眼")
-            # [('害羞', 0.80), ('生气', 0.12), ('高兴', 0.03)]
-            ```
-        ModelManager
-            - 自动匹配 emotion_classifier*.onnx（支持 fp16/int8 变体）
-            - 首次使用自动从 GitHub 下载
-            - 存储于 ~/emotion_classifier/models/
-            - 调用 clf.update_models() 强制更新
+    Examples
+    ------
+    ```python
+        # 最简方式
+        clf = EmotionClassifier(auto_download=True)
+        result = clf("今天心情真好")  # [('高兴', 0.95), ...]
+
+        # 自定义编码器
+        clf = EmotionClassifier(encoder_path="/path/to/custom.onnx")
+
+        # 上下文管理器
+        with EmotionClassifier() as clf:
+            results = clf.predict(["text1", "text2"], top_k=5)
+
+        # 批量预测
+        results = clf.predict_batch(texts, batch_size=64)
+    ```
     """
 
     def __init__(
         self,
         model_dir: Optional[str] = None,
-        backend: Literal["onnx", "pytorch","auto"] = "auto",
+        backend: str = "auto",
         encoder_path: Optional[str] = None,
         auto_download: bool = False,
-        device: Literal["cpu", "cuda"]|None = None,
+        device: Optional[Literal["cpu", "cuda"]] = None,
+        tokenizer_dir: Optional[str] = None,
+        repo_url: Optional[str] = None,
     ):
         self.model_dir = Path(model_dir) if model_dir else ModelConfig.default_model_dir()
         self.model_dir.mkdir(parents=True, exist_ok=True)
         self.backend = backend
         self.auto_download = auto_download
         self.encoder_path = encoder_path
+        self.repo_url = repo_url
+        if tokenizer_dir is None:
+            self.tokenizer_dir = str(self.model_dir / "tokenizer")
         if device is None:
             try:
                 from torch import cuda
                 self.device = "cuda" if cuda.is_available() else "cpu"
             except ImportError:
                 self.device = "cpu"
-                return
         else:
             self.device = device
-    
-    def load_label_map(self):
-        label_map_path = ModelConfig.load_label_map()
-        with open(label_map_path, "r", encoding="utf-8") as f:
-            mapping = json.load(f)
-        self.id2label = {int(k): v for k, v in mapping["id2label"].items()}
-        self.label2id = mapping["label2id"]
-        self.num_labels = mapping["num_labels"]
 
+        self._loaded = False
+        self._label2id: Dict[str, int] = {}
+        self._id2label: Dict[int, str] = {}
+        self._num_labels: int = 0
     
-    def init(self):
-        needed = self._resolve_needed_files(self.backend)
-        missing = [f for f in needed if not (self.model_dir / f).exists()]
-
+    def ensure_loaded(self):
+        if self._loaded:
+            return
+        self.__initialize()
+        self._loaded = True
+    
+    def __initialize(self):
+        self._repo = ModelRepository(self.model_dir, repo_url=self.repo_url)
+        needed = self._repo.required_files(self.backend)
+        missing = [f for f in needed if not (self.model_dir / f).exists()] # 检查缺失的模型文件
         if missing:
             if self.auto_download:
-                print(f"[初始化] 检测到 {len(missing)} 个模型文件缺失，开始下载...")
-                AsyncModelDownloader.download_sync(needed, self.model_dir)
+                logger.info(f"[初始化] 检测到 {len(missing)} 个模型文件缺失，开始下载...")
+                AsyncModelDownloader.download_sync(needed, self.model_dir, self._repo)
             else:
                 raise FileNotFoundError(
                     f"模型文件缺失: {missing}\n"
                     f"请设置 auto_download=True 或手动放置到 {self.model_dir}"
                 )
-        self.load_label_map()
-        self._init_backend(self.backend)
-        self._init_encoder(self.encoder_path)
 
-    def _init_encoder(self, encoder_path: Optional[str]):
-        if encoder_path:
-            enc_path = Path(encoder_path)
-            if enc_path.exists() and enc_path.suffix == ".onnx":
-                self._load_onnx_encoder(enc_path)
-                return
+        self.__load_label_map()
+        self.__init_encoder()
+        self.__init_backend()
+
+    def __init_encoder(self):
+        if self.encoder_path:
+            # 用户指定了自定义编码器
+            enc_path = Path(self.encoder_path)
+            if not enc_path.exists():
+                raise FileNotFoundError(f"自定义编码器不存在: {enc_path}")
+            if enc_path.suffix == ".onnx":
+                from .models.encoder import ONNXEncoder
+                self._encoder = ONNXEncoder(str(enc_path), tokenizer_dir=self.tokenizer_dir)
             else:
-                # 当作 SentenceTransformer 名称处理
-                self._load_st_encoder(str(encoder_path))
-                return
-
-        # 2. 自动查找 ONNX 编码器
-        enc_onnx = find_encoder_onnx(self.model_dir)
-        if enc_onnx:
-            self._load_onnx_encoder(enc_onnx)
+                from .models.encoder import SentenceTransformerEncoder
+                self._encoder = SentenceTransformerEncoder(str(enc_path), device=self.device)
             return
 
-        # 3. 回退到 SentenceTransformer
-        self._load_st_encoder(ModelConfig.ENCODER_TOKENIZER)
+        # 自动查找 ONNX 编码器
+        enc_onnx = self._repo.find_encoder_onnx()
+        if enc_onnx:
+            from .models.encoder import ONNXEncoder
+            self._encoder = ONNXEncoder(str(enc_onnx), tokenizer_dir=self.tokenizer_dir)
+            return
 
-    def _load_onnx_encoder(self, onnx_path: Path):
-        print(f"[编码器] 加载量化 ONNX: {onnx_path.name}")
-        # 查找配套 tokenizer 目录
-        tokenizer_dir = None
-        for candidate in [self.model_dir, self.model_dir / ModelConfig.ENCODER_TOKENIZER_DIR]:
-            if candidate.exists() and (candidate / "tokenizer.json").exists():
-                tokenizer_dir = str(candidate)
-                break
-
-        self.encoder = ONNXEncoder(
-            onnx_path=str(onnx_path),
-            tokenizer_dir=tokenizer_dir or str(self.model_dir / ModelConfig.ENCODER_TOKENIZER_DIR),
-            tokenizer_name=f"sentence-transformers/{ModelConfig.ENCODER_TOKENIZER}"
+        # 回退到 SentenceTransformer
+        logger.info("未找到 ONNX 编码器，回退到 SentenceTransformer...")
+        from .models.encoder import SentenceTransformerEncoder
+        self._encoder = SentenceTransformerEncoder(
+            f"sentence-transformers/{ModelConfig.ENCODER_TOKENIZER}",
+            device=self.device
         )
-        self._encode_method = "onnx"
 
-    def _load_st_encoder(self, model_name: str):
-        print(f"[编码器] 加载 SentenceTransformer: {model_name}")
-        from sentence_transformers import SentenceTransformer
-        self.encoder = SentenceTransformer(model_name, device=self.device)
-        self._encode_method = "st"
+    def __load_label_map(self):
+        if self._label2id:
+            return
+        lm_path = ModelConfig.get_label_map_path()
+        if not lm_path.exists():
+            raise FileNotFoundError(f"标签映射文件不存在: {lm_path}")
+        with open(lm_path, "r", encoding="utf-8") as f:
+            mapping = json.load(f)
+        self._id2label = {int(k): v for k, v in mapping["id2label"].items()}
+        self._label2id = mapping["label2id"]
+        self._num_labels = mapping["num_labels"]
 
-    def _resolve_needed_files(self, backend: str) -> List[str]:
-        """
-        根据后端类型和本地已有文件，确定需要下载的文件列表。
-        分类头 ONNX 使用通配符匹配 emotion_classifier*.onnx。
-        """
-        if backend == "onnx":
-            return list(ModelConfig.ONNX_FILES)
-        elif backend == "pytorch":
-            return list(ModelConfig.PT_FILES)
-        else:
-            # auto：检测本地已有文件
-            cls_onnx = find_classifier_onnx(self.model_dir)
+    def __init_backend(self):
+        if self.backend == "auto":
+            cls_onnx = self._repo.find_classifier_onnx()
             if cls_onnx:
-                # 有 ONNX 分类头 → 下载 ONNX 套件
-                return list(ModelConfig.ONNX_FILES)
-            elif (self.model_dir / "emotion_classify.pt").exists():
-                return list(ModelConfig.PT_FILES)
+                self.backend = "onnx"
+            elif self._repo.find_pytorch_weight():
+                self.backend = "pytorch"
             else:
-                # 都没下载过 → 默认下载 ONNX
-                return list(ModelConfig.ONNX_FILES)
+                self.backend = "onnx"  # 默认
 
-    def _init_backend(self, backend: str):
-        if backend == "auto":
-            cls_onnx = find_classifier_onnx(self.model_dir)
-            if cls_onnx:
-                backend = "onnx"
-                self._classifier_onnx_path = cls_onnx
-                print(f"[后端] 自动选择 ONNX: {cls_onnx.name}")
-            elif (self.model_dir / "emotion_classify.pt").exists():
-                backend = "pytorch"
-            else:
-                # 都没下载 → 默认 ONNX
-                backend = "onnx"
-                self._classifier_onnx_path = self.model_dir / ModelConfig.CLASSIFIER_ONNX_DEFAULT
-
-        self.backend = backend
-
-        if backend == "onnx":
-            self._init_onnx()
+        if self.backend == "onnx":
+            self.__init_onnx()
         else:
-            try:
-                self._init_pytorch()
-            except ImportError:
-                print("[警告] PyTorch 依赖未安装，自动切换到 ONNX 后端")
-                backend = 'onnx'
-                self._init_onnx()
-
-    def _init_onnx(self):
+            self.__init_pytorch()
+    
+    def __init_onnx(self):
         import onnxruntime as ort
-
-        # 通配符查找分类头
-        cls_path = getattr(self, '_classifier_onnx_path', None)
+        cls_path = self._repo.find_classifier_onnx()
         if cls_path is None:
-            cls_path = find_classifier_onnx(self.model_dir)
-        if cls_path is None:
+            # 尝试默认文件名
             cls_path = self.model_dir / ModelConfig.CLASSIFIER_ONNX_DEFAULT
-
-        print(f"[后端] 加载分类头 ONNX: {cls_path.name}")
-
+            if not cls_path.exists():
+                raise FileNotFoundError(
+                    f"未找到分类头 ONNX 文件，请确认 {self.model_dir} 中包含 emotion_classifier*.onnx"
+                )
         providers = ["CPUExecutionProvider"]
-        try:
-            if self.device == "cuda":
+        if self.device == "cuda":
+            try:
                 providers.insert(0, "CUDAExecutionProvider")
-        except ImportError:
-            pass
+            except Exception:
+                pass
 
-        self.sess = ort.InferenceSession(str(cls_path), providers=providers)
-        self._input_name = self.sess.get_inputs()[0].name
-        self._output_names = [self.sess.get_outputs()[0].name] # type: ignore
-        self._input_dtype = self.sess.get_inputs()[0].type
+        self._session = ort.InferenceSession(str(cls_path), providers=providers)
+        self._input_name = self._session.get_inputs()[0].name
+        self._output_names = [o.name for o in self._session.get_outputs()]
+        self._input_dtype = self._session.get_inputs()[0].type
+        logger.info(f"ONNX 后端就绪: {cls_path.name} (输入类型: {self._input_dtype})")
 
-    def _init_pytorch(self):
+    def __init_pytorch(self):
         try:
             import torch
         except ImportError:
-            raise ImportError(
-                "PyTorch 后端需要安装 torch 和 sentence-transformers。\n"
-                "请执行: pip install emotion-classifier[pytorch]"
-            )
-        from emotion_classifier.model.pytorch import EmotionClassifier
-        self.model = EmotionClassifier(
+            raise ImportError("PyTorch 后端需要安装 torch。pip install torch")
+        from .models.pytorch import EmotionClassifier as PTModel
+
+        pt_path = self._repo.find_pytorch_weight()
+        if pt_path is None:
+            raise FileNotFoundError(f"未找到 PyTorch 权重: {self.model_dir / 'emotion_classify.pt'}")
+
+        self._pt_model = PTModel(
             input_dim=384,
-            num_classes=self.num_labels,
-            hidden_dim=256,
-            dropout=0.5,
+            num_classes=self._num_labels,
+            hidden_dim=128,
+            dropout=0.3,
         ).to(self.device)
+        state = torch.load(pt_path, map_location=self.device)
+        self._pt_model.load_state_dict(state)
+        self._pt_model.eval()
+        logger.info(f"PyTorch 后端就绪: {pt_path.name}")
 
-        state = torch.load(
-            self.model_dir / "emotion_classify.pt",
-            map_location=self.device
-        )
-        self.model.load_state_dict(state)
-        self.model.eval()
-
-    def encode(self, texts: List[str]|str):
+    def encode(self, texts: str|List[str], batch_size: int = 32) -> np.ndarray:
+        self.ensure_loaded()
         if isinstance(texts, str):
             texts = [texts]
+        return self._encoder.encode(texts, batch_size=batch_size)
 
-        if self._encode_method == "onnx":
-            return self.encoder.encode(texts)
-        else:
-            embs = self.encoder.encode(texts, convert_to_numpy=True, show_progress_bar=False) # type: ignore
-            return embs.astype(np.float32)
-
-    def predict(self, texts: List[str]|str, top_k: int = 3) -> List[List[Tuple[str, float]]]:
+    def predict(
+        self,
+        texts: Union[str, List[str]],
+        top_k: int = 3,
+        batch_size: int = 32,
+    ) -> List[List[Tuple[str, float]]]:
         """
         情感分类预测。
 
+        Parameters
+        ----------
+        texts : str or list of str
+            待分类文本
+        top_k : int
+            返回前 k 个情感标签
+        batch_size : int
+            编码时的批次大小
+
         Returns
         -------
-        list[list[tuple[str, float]]]
-            每条文本的前 top_k 个 (标签, 概率)
+        results : list of dict
+            每个元素为一个文本的预测结果，包含标签和概率
         """
-        embeddings = self.encode(texts)
-        if self._input_dtype == "tensor(float16)":
-            embeddings = embeddings.astype(np.float16) # type: ignore
-        else:
-            embeddings = embeddings.astype(np.float32) # type: ignore
+        self.ensure_loaded()
+        if isinstance(texts, str):
+            texts = [texts]
 
+        # 编码
+        embeddings = self.encode(texts, batch_size=batch_size)
+
+        # 推理
         if self.backend == "onnx":
-            logits = self.sess.run(self._output_names, {self._input_name: embeddings})[0]
+            if self._input_dtype == "tensor(float16)":
+                embeddings = embeddings.astype(np.float16)
+            else:
+                embeddings = embeddings.astype(np.float32)
+            logits = self._session.run(self._output_names, {self._input_name: embeddings})[0] # type: ignore
         else:
             import torch
             with torch.no_grad():
-                logits = self.model(
-                    torch.from_numpy(embeddings).to(self.device)
-                ).cpu().numpy()
+                logits = self._pt_model(
+                    torch.from_numpy(embeddings.astype(np.float32)).to(self.device)
+                )[0].cpu().numpy()
 
         # 数值稳定 softmax
-        logits = logits.astype(np.float32) - logits.astype(np.float32).max(axis=1, keepdims=True) # type: ignore
+        logits = logits.astype(np.float32) # type: ignore
+        logits -= logits.max(axis=1, keepdims=True)
         exp_l = np.exp(logits)
         probs = exp_l / exp_l.sum(axis=1, keepdims=True)
 
+        # 组装结果
         results = []
         for prob_vec in probs:
             top_idx = np.argsort(prob_vec)[::-1][:top_k]
-            item = [
-                (self.id2label[int(i)], round(float(prob_vec[i]), 4))
-                for i in top_idx
-            ]
+            item = [(self._id2label[int(i)], float(round(prob_vec[i], 4))) for i in top_idx]
             results.append(item)
         return results
-
-    def predict_label(self, text: str, top_k: int = 1) -> List[Tuple[str, float]]:
-        return self.predict(text, top_k=top_k)[0]
+    
+    def predict_batch(
+        self,
+        texts: List[str],
+        top_k: int = 3,
+        batch_size: int = 64,
+    ) -> List[List[Tuple[str, float]]]:
+        return self.predict(texts, top_k=top_k, batch_size=batch_size)
 
     def get_labels(self) -> List[str]:
-        return list(self.label2id.keys())
+        self.__load_label_map()
+        return list(self._label2id.keys())
 
     def list_available_models(self) -> Dict[str, List[str]]:
-        """
-        列出 model_dir 中所有可用的模型文件。
-        用于调试和信息展示。
-        """
         import glob
         result = {"classifier_onnx": [], "encoder_onnx": [], "pytorch": []}
 
@@ -472,50 +291,55 @@ class EmotionClassifier:
         return result
 
     def update_models(self):
-        print(f"[更新] 检查并重新下载模型文件...")
-        needed = self._resolve_needed_files(self.backend)
-
+        """强制重新下载所有模型文件"""
+        self.close()
+        needed = self._repo.required_files(self.backend)
         for f in needed:
             fp = self.model_dir / f
             if fp.exists():
                 fp.unlink()
-                print(f"  已删除旧文件: {f}")
-
-        AsyncModelDownloader.download_sync(needed, self.model_dir)
-        self._init_backend(self.backend)
-        print("[更新] 完成，模型已刷新")
+        AsyncModelDownloader.download_sync(needed, self.model_dir, self._repo)
+        self._loaded = False
+        logger.info("模型更新完成")
 
     def model_info(self) -> Dict:
         info = {
             "backend": self.backend,
             "model_dir": str(self.model_dir),
-            "num_labels": self.num_labels,
+            "num_labels": self._num_labels,
             "labels": self.get_labels(),
-            "available_models": self.list_available_models(),
-            "files": {},
+            "encoder_type": type(self._encoder).__name__,
         }
-
-        # 检查关键文件
-        key_files = ["label_map.json"]
-        # 加上匹配到的分类头
-        cls = find_classifier_onnx(self.model_dir)
-        if cls:
-            key_files.append(cls.name)
-        else:
-            key_files.append("emotion_classify.pt")
-
-        for f in key_files:
-            fp = self.model_dir / f
-            info["files"][f] = {
+        # 文件状态
+        info["files"] = {}
+        for name in ["emotion_classifier.onnx", "emotion_classifier_fp16.onnx",
+                      "emotion_classify.pt", "model_quint8_avx2.onnx"]:
+            fp = self.model_dir / name
+            info["files"][name] = {
                 "exists": fp.exists(),
                 "size_mb": round(fp.stat().st_size / 1e6, 2) if fp.exists() else 0,
             }
         return info
 
-    def __repr__(self):
-        return (
-            f"EmotionClassifier(backend='{self.backend}', "
-            f"encoder='{self._encode_method}', "
-            f"labels={self.num_labels}, "
-            f"dir='{self.model_dir}')"
-        )
+    
+    def close(self):
+        if hasattr(self, '_session') and self._session is not None:
+            self._session = None
+        if hasattr(self, '_pt_model'):
+            del self._pt_model
+        if hasattr(self, '_encoder') and hasattr(self._encoder, 'close'):
+            self._encoder.close()
+        self._loaded = False
+    
+    def __call__(self, text: str, top_k: int = 3) -> List[Tuple[str, float]]:
+        return self.predict(text, top_k=top_k)[0]
+
+    def __enter__(self):
+        self.ensure_loaded()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        self.close()

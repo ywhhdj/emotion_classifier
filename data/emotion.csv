@@ -1,5 +1,5 @@
 text,label,lang
-开心地小跳着走路,兴奋,zh
+开心地小跳着走路,高兴,zh
 不露声色,平静,zh
 气鼓鼓地跺了一下,生气,zh
 哭到恍惚,哭泣,zh
@@ -27,7 +27,7 @@ text,label,lang
 失声惊呼,惊讶,zh
 害怕地咬着嘴唇,害怕,zh
 紧盯着公式,认真,zh
-激动地咬着手套,兴奋,zh
+激动地咬着手套,高兴,zh
 哺乳期敏感,心动,zh
 翻动笔记本,认真,zh
 悲鸣,哭泣,zh
@@ -39,7 +39,7 @@ text,label,lang
 沉静,平静,zh
 钻地缝,难为情,zh
 笔直地盯着屏幕,认真,zh
-亢奋,兴奋,zh
+亢奋,高兴,zh
 "干巴巴地说""你高兴就好""",无奈,zh
 稳如磐石,自信,zh
 羞耻漏影,难为情,zh
@@ -78,7 +78,7 @@ text,label,lang
 露出小尖牙,高兴,zh
 渴求爱抚,心动,zh
 羞耻漏拍,难为情,zh
-激动地抱住抱枕打滚,兴奋,zh
+激动地抱住抱枕打滚,高兴,zh
 假装失聪,难为情,zh
 害羞地摸了摸鼻子,害羞,zh
 耳朵竖起,生气,zh
@@ -111,7 +111,7 @@ my palms are sweating,紧张,en
 翻着白眼撇嘴,生气,zh
 恶心地干呕,厌恶,zh
 意外地眨眨眼,惊讶,zh
-兴奋地拍打床铺,兴奋,zh
+兴奋地拍打床铺,高兴,zh
 听音乐,平静,zh
 嬉しくて仕方がない,高兴,ja
 匪夷所思,惊讶,zh
@@ -149,7 +149,7 @@ my palms are sweating,紧张,en
 羞耻撞墙,难为情,zh
 倦意,平静,zh
 晃动脚踝,紧张,zh
-开心地蹦跳着走路,兴奋,zh
+开心地蹦跳着走路,高兴,zh
 目光闪烁,紧张,zh
 蹦蹦跳跳地走动,高兴,zh
 反感地绷紧下巴,厌恶,zh
@@ -182,10 +182,10 @@ my palms are sweating,紧张,en
 突然警觉,紧张,zh
 想消失,难为情,zh
 ふざけて笑い合う,调皮,ja
-开心地小跑转圈,兴奋,zh
+开心地小跑转圈,高兴,zh
 发情,心动,zh
 微微抖动着肩膀,害怕,zh
-激动地握拳挥舞,兴奋,zh
+激动地握拳挥舞,高兴,zh
 羞耻漏尿,难为情,zh
 大脑过载,难为情,zh
 歪着头,疑惑,zh
@@ -193,7 +193,7 @@ my palms are sweating,紧张,en
 震惊地说不出话,惊讶,zh
 把糖纸塞领,调皮,zh
 难耐,心动,zh
-快乐地前后摆动手臂,兴奋,zh
+快乐地前后摆动手臂,高兴,zh
 泪浸锁骨,哭泣,zh
 皱起眉头撅嘴,生气,zh
 厌恶地摇了摇头,厌恶,zh
@@ -238,13 +238,13 @@ studying with full attention,认真,en
 羞愤,生气,zh
 呆若木鸡,惊讶,zh
 咬紧牙关,紧张,zh
-兴奋地拍打栏杆,兴奋,zh
+兴奋地拍打栏杆,高兴,zh
 软绵绵地趴在你身上,高兴,zh
 眨眼次数变多,紧张,zh
-开心得语速飞快,兴奋,zh
+开心得语速飞快,高兴,zh
 吹吹风,平静,zh
 不解地歪着耳朵思考,疑惑,zh
-激动地挥舞双手,兴奋,zh
+激动地挥舞双手,高兴,zh
 泪光闪烁,哭泣,zh
 出乎意料,惊讶,zh
 攥紧袖口,紧张,zh
@@ -252,7 +252,7 @@ guess i have no choice,无奈,en
 哭到抓头发,哭泣,zh
 咬紧嘴唇,认真,zh
 突然牛哞,难为情,zh
-激动得脸颊泛红,兴奋,zh
+激动得脸颊泛红,高兴,zh
 轻轻用爪子挡住脸,害羞,zh
 恼火地甩尾巴,生气,zh
 呜咽,哭泣,zh
@@ -263,7 +263,7 @@ guess i have no choice,无奈,en
 手忙脚乱,慌张,zh
 耳朵微微颤抖,紧张,zh
 撇嘴瞪你,生气,zh
-开心地小跳着前进,兴奋,zh
+开心地小跳着前进,高兴,zh
 脸颊通红,害羞,zh
 小声地咕哝了一下,害羞,zh
 困,平静,zh
@@ -283,7 +283,7 @@ smirking with mischief,调皮,en
 不安地看向窗外,担心,zh
 露出小虎牙,高兴,zh
 let me pull a little prank,调皮,en
-雀跃,兴奋,zh
+雀跃,高兴,zh
 轻轻摇晃尾巴,高兴,zh
 轻轻扭动身体,害羞,zh
 用手扇风假装冷静,无奈,zh
@@ -342,7 +342,7 @@ i have no idea what's going on,疑惑,en
 紧张地攥紧拳头,担心,zh
 焦灼,心动,zh
 酣睡,平静,zh
-飛び跳ねたいほど楽しい,兴奋,ja
+飛び跳ねたいほど楽しい,高兴,ja
 there's nothing i can do,无奈,en
 突然失忆,难为情,zh
 吐舌,调皮,zh
@@ -369,7 +369,7 @@ there's nothing i can do,无奈,en
 不紧不慢地分析,认真,zh
 瞠目结舌,惊讶,zh
 兴奋地扑腾爪子,高兴,zh
-振奋,兴奋,zh
+振奋,高兴,zh
 缓缓地梳理思路,认真,zh
 紧张地揪衣摆,紧张,zh
 害怕地哆嗦着说话,害怕,zh
@@ -377,7 +377,7 @@ there's nothing i can do,无奈,en
 诧异,惊讶,zh
 发情期至,心动,zh
 集中して取り組んでいる,认真,ja
-快乐地上下点头,兴奋,zh
+快乐地上下点头,高兴,zh
 用指甲轻轻刮桌面,无奈,zh
 幽静,平静,zh
 担心地握紧双手,担心,zh
@@ -393,7 +393,7 @@ there's nothing i can do,无奈,en
 沉睡,平静,zh
 松口气,平静,zh
 惊恐地瑟瑟发抖,害怕,zh
-激动地抓着书包跳,兴奋,zh
+激动地抓着书包跳,高兴,zh
 皱着眉头嘟囔,厌恶,zh
 吃惊,惊讶,zh
 想睡觉,平静,zh
@@ -415,7 +415,7 @@ this makes absolutely no sense,疑惑,en
 厌恶地撇开目光,厌恶,zh
 摇晃着尾巴,高兴,zh
 双手紧紧抱着尾巴,害羞,zh
-激动地抓着头发,兴奋,zh
+激动地抓着头发,高兴,zh
 my heart skips a beat when i see you,心动,en
 呼吸急促地喘息,害怕,zh
 当场融化,难为情,zh
@@ -424,7 +424,7 @@ my heart skips a beat when i see you,心动,en
 哭到仰头,哭泣,zh
 my heart is pounding with terror,害怕,en
 热锅上的蚂蚁,慌张,zh
-兴奋地拍打桌面,兴奋,zh
+兴奋地拍打桌面,高兴,zh
 愕然无语,惊讶,zh
 生气地翘起耳朵,生气,zh
 不安地左右晃动,慌张,zh
@@ -457,7 +457,7 @@ this is the best day ever,高兴,en
 沉思着摸下巴,认真,zh
 眉头紧皱,厌恶,zh
 狠狠瞪了你一眼,生气,zh
-激动,兴奋,zh
+激动,高兴,zh
 厌恶地撇嘴,厌恶,zh
 专注地盯着你,认真,zh
 后退一步远离,厌恶,zh
@@ -469,7 +469,7 @@ this is the best day ever,高兴,en
 神色淡然,平静,zh
 把袖子拉长盖住手掌,无奈,zh
 i don't know what to do,慌张,en
-快乐地前后摆动脑袋,兴奋,zh
+快乐地前后摆动脑袋,高兴,zh
 紧张地来回踱步,紧张,zh
 my heart is so full of joy,高兴,en
 冷哼一声撇过头,生气,zh
@@ -493,10 +493,10 @@ i'm completely lost,疑惑,en
 反感地转过头,厌恶,zh
 气得尾巴炸毛,生气,zh
 佛系,平静,zh
-快乐地前后晃动身体,兴奋,zh
-狂喜,兴奋,zh
+快乐地前后晃动身体,高兴,zh
+狂喜,高兴,zh
 不好意思地扯衣角,难为情,zh
-兴奋地手都不知道放哪,兴奋,zh
+兴奋地手都不知道放哪,高兴,zh
 神经紧绷,紧张,zh
 心如止水,平静,zh
 骇人听闻,惊讶,zh
@@ -508,11 +508,11 @@ i'm completely lost,疑惑,en
 低头盯着地板,紧张,zh
 低头回避目光,紧张,zh
 耳朵紧紧贴着头,害怕,zh
-so excited i can hardly sit still,兴奋,en
+so excited i can hardly sit still,高兴,en
 尾巴不安地摆动,慌张,zh
 不慌不忙地整理,认真,zh
 惊愕地捂住嘴,惊讶,zh
-兴奋地原地小跑,兴奋,zh
+兴奋地原地小跑,高兴,zh
 嘴角抽搐了一下,厌恶,zh
 犯困,平静,zh
 浅睡,平静,zh
@@ -527,10 +527,10 @@ so excited i can hardly sit still,兴奋,en
 坏笑,调皮,zh
 狡黠地偷笑,调皮,zh
 哭到脱力,哭泣,zh
-激动地抓着玩偶跳,兴奋,zh
+激动地抓着玩偶跳,高兴,zh
 耳朵紧张地抖动,紧张,zh
 忘情呻吟,心动,zh
-兴奋地拍打车窗,兴奋,zh
+兴奋地拍打车窗,高兴,zh
 风平浪静,平静,zh
 双手紧紧抱在胸前,紧张,zh
 慌手慌脚,慌张,zh
@@ -550,7 +550,7 @@ completely focused on the task,认真,en
 翻了个不屑的眼神,厌恶,zh
 假装要踢人,调皮,zh
 小声哼着歌,高兴,zh
-快乐地前后蹦跳,兴奋,zh
+快乐地前后蹦跳,高兴,zh
 闻之色变,惊讶,zh
 把帽子反戴,调皮,zh
 跳起来抱住你,高兴,zh
@@ -615,7 +615,7 @@ hands are shaking uncontrollably,紧张,en
 酥麻,心动,zh
 惊喘,惊讶,zh
 惊视,惊讶,zh
-激动地抓着围巾转圈,兴奋,zh
+激动地抓着围巾转圈,高兴,zh
 求偶鸣叫,心动,zh
 臣服强者,心动,zh
 嘴唇抿成一条线,紧张,zh
@@ -673,7 +673,7 @@ hands are shaking uncontrollably,紧张,en
 专注地盯着课本,认真,zh
 从容不迫,自信,zh
 眉头皱得更深了,厌恶,zh
-激动地抓着靠垫跳,兴奋,zh
+激动地抓着靠垫跳,高兴,zh
 慌ててドタバタしている,慌张,ja
 羞耻假死,难为情,zh
 用脚尖轻轻点地打发时间,无奈,zh
@@ -681,8 +681,8 @@ hands are shaking uncontrollably,紧张,en
 成竹在胸,自信,zh
 厌恶地眯起眼,厌恶,zh
 慌张地搓手,慌张,zh
-激动地抓着零食跳,兴奋,zh
-开心地蹦跳着转圈,兴奋,zh
+激动地抓着零食跳,高兴,zh
+开心地蹦跳着转圈,高兴,zh
 泪湿鬓角,哭泣,zh
 朦胧,平静,zh
 慌乱地张望四周,害怕,zh
@@ -787,7 +787,7 @@ so annoyed i could scream,生气,en
 用抱枕压人,调皮,zh
 惊跳,惊讶,zh
 无声地掉眼泪,哭泣,zh
-快乐地左右摇晃椅子,兴奋,zh
+快乐地左右摇晃椅子,高兴,zh
 隔岸观火,平静,zh
 冷冷地盯了一眼,厌恶,zh
 惊诧,惊讶,zh
@@ -799,12 +799,12 @@ so annoyed i could scream,生气,en
 转圈圈转个不停,高兴,zh
 嘴角勾起弧度,高兴,zh
 扬颌,自信,zh
-快乐地哼着歌转圈,兴奋,zh
+快乐地哼着歌转圈,高兴,zh
 抱着胳膊冷哼,生气,zh
 深眠,平静,zh
 疑惑地歪着尾巴思考你的说明,疑惑,zh
 把衣领竖起来遮脸,无奈,zh
-激动地抓着衣角跳,兴奋,zh
+激动地抓着衣角跳,高兴,zh
 嘴唇微微颤抖,害羞,zh
 清静,平静,zh
 开心地伸个懒腰,高兴,zh
@@ -828,7 +828,7 @@ this is so unexpected,惊讶,en
 用尾巴挡住脸不想看,无奈,zh
 不解地歪着脑袋,疑惑,zh
 没辙,无奈,zh
-兴奋地踢踏着脚,兴奋,zh
+兴奋地踢踏着脚,高兴,zh
 尾巴摇得像风车,高兴,zh
 月朗风清,平静,zh
 眼神不安地四处张望,害怕,zh
@@ -836,7 +836,7 @@ this is so unexpected,惊讶,en
 哭到语塞,哭泣,zh
 惊慌地倒退两步,害怕,zh
 调皮地做鬼脸,调皮,zh
-兴奋地拍打胸口,兴奋,zh
+兴奋地拍打胸口,高兴,zh
 羞耻咬舌,难为情,zh
 担心地绞着衣角,担心,zh
 红着脸不敢说话,害羞,zh
@@ -845,7 +845,7 @@ this is so unexpected,惊讶,en
 手指轻轻绞在一起,害羞,zh
 梨花带雨,哭泣,zh
 厌恶地移开视线,厌恶,zh
-激动得说话都破音,兴奋,zh
+激动得说话都破音,高兴,zh
 不解地歪着耳朵,疑惑,zh
 全神贯注地听讲,认真,zh
 目瞪口呆,惊讶,zh
@@ -876,7 +876,7 @@ this is so unexpected,惊讶,en
 纳闷地翻看,疑惑,zh
 用脚趾夹人,调皮,zh
 害怕地缩成一团,害怕,zh
-激动地抓着枕头跳,兴奋,zh
+激动地抓着枕头跳,高兴,zh
 把手放在膝盖上握紧,无奈,zh
 担心地咬嘴唇,担心,zh
 诧异地挑眉,惊讶,zh
@@ -885,7 +885,7 @@ this is so unexpected,惊讶,en
 嘴巴微微上扬,高兴,zh
 胸有丘壑,自信,zh
 大惊失色,惊讶,zh
-开心地跳着拍手,兴奋,zh
+开心地跳着拍手,高兴,zh
 愤愤地握拳,生气,zh
 困惑地歪着脑袋看你,疑惑,zh
 突然乱码,难为情,zh
@@ -893,8 +893,8 @@ this is so unexpected,惊讶,en
 泪水决堤,哭泣,zh
 深吸一口气,紧张,zh
 头微微后仰避开气味,厌恶,zh
-兴奋地拍打方向盘,兴奋,zh
-激动地抓着钥匙跳,兴奋,zh
+兴奋地拍打方向盘,高兴,zh
+激动地抓着钥匙跳,高兴,zh
 something bad is going to happen,担心,en
 悄悄拽住你的衣角,高兴,zh
 扑进你怀里蹭蹭,高兴,zh
@@ -916,11 +916,11 @@ too scared to move,害怕,en
 吓得不敢动,害怕,zh
 feeling calm and relaxed,平静,en
 用尾巴把自己稍微裹住,无奈,zh
-蹦跳着拍打沙发,兴奋,zh
+蹦跳着拍打沙发,高兴,zh
 咬牙切齿,生气,zh
-心が躍るような気分,兴奋,ja
+心が躍るような気分,高兴,ja
 下意识地捏紧衣角,慌张,zh
-兴奋地拍打墙壁,兴奋,zh
+兴奋地拍打墙壁,高兴,zh
 慌张地深呼吸,慌张,zh
 my heart aches so much,哭泣,en
 始料未及,惊讶,zh
@@ -940,7 +940,7 @@ i can't stop thinking about you,心动,en
 困惑地自言自语,疑惑,zh
 局促,紧张,zh
 彻底破防,哭泣,zh
-开心地小跑着欢呼,兴奋,zh
+开心地小跑着欢呼,高兴,zh
 can't help but tease you,调皮,en
 把眼镜戴歪,调皮,zh
 咽了咽口水,害怕,zh
@@ -958,14 +958,14 @@ i'm completely losing control,慌张,en
 嫌弃地甩了甩手,厌恶,zh
 捂脸跑,难为情,zh
 惊愕,惊讶,zh
-快乐地左右摇摆身体,兴奋,zh
+快乐地左右摇摆身体,高兴,zh
 不解地歪着耳朵听你讲述,疑惑,zh
 嘴角微微下撇,厌恶,zh
-开心地拍打膝盖,兴奋,zh
-兴奋地拍打大腿,兴奋,zh
+开心地拍打膝盖,高兴,zh
+兴奋地拍打大腿,高兴,zh
 成瘾性反应,心动,zh
 轻轻眨眼,高兴,zh
-快乐地左右扭动,兴奋,zh
+快乐地左右扭动,高兴,zh
 紧张地深呼吸,紧张,zh
 左顾右盼,慌张,zh
 害怕地盯着地面,害怕,zh
@@ -1000,7 +1000,7 @@ i'm completely losing control,慌张,en
 子宫收缩,心动,zh
 索取更多,心动,zh
 吃惊地捂住胸口,惊讶,zh
-快乐地晃着上半身,兴奋,zh
+快乐地晃着上半身,高兴,zh
 突然害羞,害羞,zh
 潮红,心动,zh
 入梦,平静,zh
@@ -1014,16 +1014,16 @@ i'm completely losing control,慌张,en
 眼泪汪汪,害怕,zh
 语无伦次,慌张,zh
 眼神闪烁,害羞,zh
-兴奋地拍打衣柜,兴奋,zh
+兴奋地拍打衣柜,高兴,zh
 胜券在握,自信,zh
 轻轻碰了碰你的脸,高兴,zh
 性感带觉醒,心动,zh
 惊恐地腿软,害怕,zh
 面无表情,平静,zh
 泪如断珠,哭泣,zh
-手舞足蹈地转圈圈,兴奋,zh
+手舞足蹈地转圈圈,高兴,zh
 凝视着前方,认真,zh
-快乐地晃着双脚,兴奋,zh
+快乐地晃着双脚,高兴,zh
 i'm so nervous i can't focus,紧张,en
 惊异非常,惊讶,zh
 完全に予想外だった,惊讶,ja
@@ -1111,7 +1111,7 @@ deep in concentration,认真,en
 嘟起嘴巴翻白眼,生气,zh
 胸口起伏,心动,zh
 渴求征服,心动,zh
-兴奋地拍桌子,兴奋,zh
+兴奋地拍桌子,高兴,zh
 突然猫叫,难为情,zh
 激动得耳朵抖动,高兴,zh
 困惑地歪头,疑惑,zh
@@ -1124,7 +1124,7 @@ deep in concentration,认真,en
 身の毛もよだつような恐怖,害怕,ja
 害羞地捂住嘴巴,害羞,zh
 脸上洋溢着笑意,高兴,zh
-开心地蹦跳着唱歌,兴奋,zh
+开心地蹦跳着唱歌,高兴,zh
 用指腹轻轻摩挲杯沿,无奈,zh
 脚尖轻轻踮起,高兴,zh
 摇头晃脑,高兴,zh
@@ -1136,7 +1136,7 @@ deep in concentration,认真,en
 皱起鼻子,厌恶,zh
 扶了扶眼镜,认真,zh
 主动索吻,心动,zh
-快乐地左右摇晃,兴奋,zh
+快乐地左右摇晃,高兴,zh
 嫌弃地用手指弹开,厌恶,zh
 开心地摇摆身体,高兴,zh
 気味が悪くて鳥肌が立つ,厌恶,ja
@@ -1147,7 +1147,7 @@ deep in concentration,认真,en
 雀跃地扑腾,高兴,zh
 难以置信地摇头,惊讶,zh
 用围巾捆手,调皮,zh
-开心地小跳着哼歌,兴奋,zh
+开心地小跳着哼歌,高兴,zh
 嫌弃地侧身躲开,厌恶,zh
 漫不经心,平静,zh
 安眠,平静,zh
@@ -1194,9 +1194,9 @@ deep in concentration,认真,en
 高高跃起,高兴,zh
 担心地来回踱步,担心,zh
 把鞋藏床底,调皮,zh
-激动地原地蹦跳,兴奋,zh
+激动地原地蹦跳,高兴,zh
 耳朵兴奋地抖动,高兴,zh
-开心地拍打自己的脸,兴奋,zh
+开心地拍打自己的脸,高兴,zh
 放空,平静,zh
 轻轻咬住嘴唇,害羞,zh
 眼里满是笑意,高兴,zh
@@ -1212,10 +1212,10 @@ i want to throw up,厌恶,en
 双手抱胸思考,认真,zh
 不安地揉着耳朵,担心,zh
 嫌弃地皱起鼻尖,厌恶,zh
-兴奋地拍打椅背,兴奋,zh
+兴奋地拍打椅背,高兴,zh
 紧紧攥拳,生气,zh
-快乐地左右晃着腿,兴奋,zh
-快乐地左右摇摆椅子,兴奋,zh
+快乐地左右晃着腿,高兴,zh
+快乐地左右摇摆椅子,高兴,zh
 反感地搓手臂,厌恶,zh
 心惊肉跳,惊讶,zh
 托腮静思,认真,zh
@@ -1225,7 +1225,7 @@ i want to throw up,厌恶,en
 点头思索,认真,zh
 揉着眉心叹气,无奈,zh
 不解地皱眉,疑惑,zh
-开心地蹦着转圈,兴奋,zh
+开心地蹦着转圈,高兴,zh
 低头玩手指不想搭理,无奈,zh
 手足无措,慌张,zh
 巢穴本能,心动,zh
@@ -1250,7 +1250,7 @@ i want to throw up,厌恶,en
 穴があったら入りたい,难为情,ja
 担心地皱眉,担心,zh
 恶作剧,调皮,zh
-快乐地左右晃动手臂,兴奋,zh
+快乐地左右晃动手臂,高兴,zh
 迫不及待地点头,高兴,zh
 渴望成结,心动,zh
 用尾巴轻轻缠住脚踝,无奈,zh
@@ -1269,8 +1269,8 @@ i want to throw up,厌恶,en
 耳朵向后压,生气,zh
 翻着白眼冷哼,生气,zh
 偷瞄,害羞,zh
-兴奋地拍打冰箱门,兴奋,zh
-兴奋地摇晃着尾巴,兴奋,zh
+兴奋地拍打冰箱门,高兴,zh
+兴奋地摇晃着尾巴,高兴,zh
 my blood is boiling,生气,en
 认真地调整耳机,认真,zh
 意外之极,惊讶,zh
@@ -1284,7 +1284,7 @@ my blood is boiling,生气,en
 耳朵兴奋地颤抖,高兴,zh
 analyzing every detail carefully,认真,en
 渴望被占有,心动,zh
-开心地蹦跳着说话,兴奋,zh
+开心地蹦跳着说话,高兴,zh
 羞耻打嗝,难为情,zh
 i'm so furious right now,生气,en
 泪打转儿,哭泣,zh
@@ -1304,7 +1304,7 @@ i'm so furious right now,生气,en
 子宫悸动,心动,zh
 戳脸颊,调皮,zh
 突然死机,难为情,zh
-快乐地上下蹦跳,兴奋,zh
+快乐地上下蹦跳,高兴,zh
 轻轻皱眉,认真,zh
 心慌意乱,慌张,zh
 泪滴成线,哭泣,zh
@@ -1328,15 +1328,15 @@ i'm so furious right now,生气,en
 慌张地环顾四周,慌张,zh
 贪食体液,心动,zh
 雌性本能,心动,zh
-兴奋地拍打柜子,兴奋,zh
+兴奋地拍打柜子,高兴,zh
 忙乱,慌张,zh
 抱膝哭泣,哭泣,zh
 眼神死,难为情,zh
 突然当机,难为情,zh
 恶心地打了个寒颤,厌恶,zh
-激动地抓着抱枕跳,兴奋,zh
+激动地抓着抱枕跳,高兴,zh
 不甚在意,平静,zh
-快乐地晃着肩膀,兴奋,zh
+快乐地晃着肩膀,高兴,zh
 干笑两声不再接话,无奈,zh
 担心地揉着耳朵,担心,zh
 认真地盯着屏幕,认真,zh
@@ -1353,7 +1353,7 @@ i'm so furious right now,生气,en
 眼神回避,紧张,zh
 眼睛弯成月牙,高兴,zh
 用纸团丢人,调皮,zh
-激动地抓着围巾跳,兴奋,zh
+激动地抓着围巾跳,高兴,zh
 パニックになりそう,慌张,ja
 i'm on top of the world,自信,en
 低声咕哝着不满,厌恶,zh
@@ -1366,7 +1366,7 @@ you make my knees weak,心动,en
 波澜不惊,平静,zh
 眼神放空看向天花板,无奈,zh
 轻轻侧过脸,害羞,zh
-激动地抓着手机跳,兴奋,zh
+激动地抓着手机跳,高兴,zh
 咬着嘴唇思考,认真,zh
 不解地歪着耳朵听你描述,疑惑,zh
 摆弄袖口转移注意力,无奈,zh
@@ -1375,7 +1375,7 @@ you make my knees weak,心动,en
 揉着太阳穴叹气,无奈,zh
 生闷气不说话,生气,zh
 哭到咬手,哭泣,zh
-眼睛闪闪发亮地跳起来,兴奋,zh
+眼睛闪闪发亮地跳起来,高兴,zh
 十拿九稳,自信,zh
 呼吸变快,紧张,zh
 嘴角弯得更深了,高兴,zh
@@ -1385,7 +1385,7 @@ disgusting beyond words,厌恶,en
 小幅度地晃动身体,紧张,zh
 wanted to sink into the floor,难为情,en
 尾巴甩得更快了,高兴,zh
-开心地跺着小碎步,兴奋,zh
+开心地跺着小碎步,高兴,zh
 运筹千里,自信,zh
 i hid my face in my hands,害羞,en
 用手指敲桌面缓解烦躁,无奈,zh
@@ -1400,11 +1400,11 @@ i hid my face in my hands,害羞,en
 吓得闭上眼,害怕,zh
 不安地摆弄尾巴,担心,zh
 平复,平静,zh
-feeling absolutely thrilled,兴奋,en
+feeling absolutely thrilled,高兴,en
 忧虑地叹气,担心,zh
-兴奋地跳着转圈,兴奋,zh
+兴奋地跳着转圈,高兴,zh
 偷偷撇开目光,害羞,zh
-开心地小跑着转圈,兴奋,zh
+开心地小跑着转圈,高兴,zh
 冷眼旁观,平静,zh
 轻轻捂住鼻子,厌恶,zh
 害怕得缩成一团,害怕,zh
@@ -1430,7 +1430,7 @@ feeling so proud of myself,自信,en
 脸颊气鼓鼓,生气,zh
 看着屏幕若有所思,认真,zh
 轻轻拉住自己的袖口,害羞,zh
-激动地抓着水杯跳,兴奋,zh
+激动地抓着水杯跳,高兴,zh
 濡湿,心动,zh
 释然,平静,zh
 职业素养崩溃,慌张,zh
@@ -1471,7 +1471,7 @@ feeling so proud of myself,自信,en
 嘴角抽搐但保持沉默,无奈,zh
 无欲则刚,平静,zh
 泪眼模糊,哭泣,zh
-欢呼着举起双手,兴奋,zh
+欢呼着举起双手,高兴,zh
 不自觉地翘起嘴角,高兴,zh
 困惑地歪着脑袋思考你的问题,疑惑,zh
 i feel sick just looking at it,厌恶,en
@@ -1481,12 +1481,12 @@ i feel sick just looking at it,厌恶,en
 困惑地歪着脑袋发出困惑的声音,疑惑,zh
 无语,无奈,zh
 把外套袖子卷了又放,无奈,zh
-快乐地晃着手指,兴奋,zh
+快乐地晃着手指,高兴,zh
 急得直跺脚,紧张,zh
 羞耻漏音,难为情,zh
 委屈地抽泣,哭泣,zh
 突然扑咬,生气,zh
-激动地抓着沙发跳,兴奋,zh
+激动地抓着沙发跳,高兴,zh
 把脸转向一边不说话,无奈,zh
 渴求,心动,zh
 好きすぎて困る,心动,ja
@@ -1499,7 +1499,7 @@ i feel sick just looking at it,厌恶,en
 认真地分析,认真,zh
 黑化,调皮,zh
 泪滴晶莹,哭泣,zh
-快乐地晃着脑袋,兴奋,zh
+快乐地晃着脑袋,高兴,zh
 诧异地扭头,惊讶,zh
 躲到你身后探出半个头,害怕,zh
 羞耻漏勺,难为情,zh
@@ -1512,7 +1512,7 @@ i feel sick just looking at it,厌恶,en
 高兴,高兴,zh
 眯一会,平静,zh
 扶额闭眼深呼吸,无奈,zh
-兴奋地抓着你的手臂摇晃,兴奋,zh
+兴奋地抓着你的手臂摇晃,高兴,zh
 羞耻漏格,难为情,zh
 泪染被单,哭泣,zh
 主动侍奉,心动,zh
@@ -1525,11 +1525,11 @@ i feel sick just looking at it,厌恶,en
 躲到你身后发抖,害怕,zh
 不安地咬着嘴唇,担心,zh
 惊慌失措,慌张,zh
-兴奋地拍打房门,兴奋,zh
-开心地拍手雀跃,兴奋,zh
+兴奋地拍打房门,高兴,zh
+开心地拍手雀跃,高兴,zh
 吃惊地捏自己一下,惊讶,zh
 叉着腰冷哼,生气,zh
-快乐地前后晃动椅子,兴奋,zh
+快乐地前后晃动椅子,高兴,zh
 专注地观看视频,认真,zh
 把脸埋进手掌里叹气,无奈,zh
 feeling butterflies in my stomach,紧张,en
@@ -1543,14 +1543,14 @@ feeling butterflies in my stomach,紧张,en
 紧盯着目标,认真,zh
 悄悄躲在你身后,害羞,zh
 措手不及,慌张,zh
-激动地来回踱步,兴奋,zh
+激动地来回踱步,高兴,zh
 用橡皮筋射,调皮,zh
 困惑地皱起眉头,疑惑,zh
 焦虑地搓着手指,担心,zh
 躺平,平静,zh
 神情慌乱,慌张,zh
 満面の笑みが止まらない,高兴,ja
-突然扑过来,兴奋,zh
+突然扑过来,高兴,zh
 兴奋地抓住你的手,高兴,zh
 羞耻窒息,难为情,zh
 把头发打结,调皮,zh
@@ -1626,8 +1626,8 @@ everything is going perfectly,平静,en
 潮吹失禁,心动,zh
 用指甲轻轻刮裤子,无奈,zh
 镇定自若,平静,zh
-快乐地左右摇摆,兴奋,zh
-兴奋地拍打树干,兴奋,zh
+快乐地左右摇摆,高兴,zh
+兴奋地拍打树干,高兴,zh
 低头不敢看你,害羞,zh
 紧张得脖子僵硬,紧张,zh
 恐惧地紧闭嘴巴,害怕,zh
@@ -1656,9 +1656,9 @@ i'm terrified of what might happen,害怕,en
 沉浸在思考中,认真,zh
 嫌弃地翻了个白眼,厌恶,zh
 疯狂摆手,难为情,zh
-激动地抓着毯子跳,兴奋,zh
+激动地抓着毯子跳,高兴,zh
 feeling utterly heartbroken,哭泣,en
-激动地抓着帽子跳,兴奋,zh
+激动地抓着帽子跳,高兴,zh
 赖床,平静,zh
 i miss them so much it hurts,担心,en
 疑惑地眯起眼睛,疑惑,zh
@@ -1684,7 +1684,7 @@ just enjoying the peaceful moment,平静,en
 i'm up to no good,调皮,en
 鼓着脸颊生闷气,生气,zh
 方寸大乱,慌张,zh
-jumping with excitement,兴奋,en
+jumping with excitement,高兴,en
 疑惑地歪着尾巴思考你的话,疑惑,zh
 羞耻漏奶,难为情,zh
 轻轻点头,认真,zh
@@ -1699,7 +1699,7 @@ jumping with excitement,兴奋,en
 胃部紧缩,紧张,zh
 偷偷瞟了一眼,害羞,zh
 索然,平静,zh
-开心地蹦跳着哼歌,兴奋,zh
+开心地蹦跳着哼歌,高兴,zh
 满脸写着拒绝,厌恶,zh
 微微皱鼻露出嫌弃的表情,厌恶,zh
 忧虑地攥紧手机,担心,zh
@@ -1708,7 +1708,7 @@ jumping with excitement,兴奋,en
 发情期标记,心动,zh
 慌乱地理了理衣服,害羞,zh
 出人意料,惊讶,zh
-手忙脚乱地比划着,兴奋,zh
+手忙脚乱地比划着,高兴,zh
 厌恶,厌恶,zh
 瞳孔放大,惊讶,zh
 惊慌地躲到人身后,害怕,zh
@@ -1720,7 +1720,7 @@ i knew i could do it,自信,en
 猝不及防,惊讶,zh
 嘟着嘴鼓起腮帮,生气,zh
 this makes me absolutely livid,生气,en
-快乐地扭来扭去,兴奋,zh
+快乐地扭来扭去,高兴,zh
 看淡,平静,zh
 红着脸缩到角落里,害羞,zh
 不解地歪着头看你,疑惑,zh
@@ -1802,17 +1802,17 @@ anxiety is eating me alive,担心,en
 脚尖不停点地,慌张,zh
 捏鼻子玩,调皮,zh
 闭眼深呼吸平复心情,无奈,zh
-兴奋地拍打地面,兴奋,zh
+兴奋地拍打地面,高兴,zh
 没睡醒,平静,zh
 厌恶地往后仰,厌恶,zh
 泰然自若,自信,zh
-开心地蹦跳着拍手,兴奋,zh
+开心地蹦跳着拍手,高兴,zh
 安宁,平静,zh
 报复,生气,zh
 脸颊微微泛红,害羞,zh
 不开心地嘟囔,生气,zh
 用尾巴轻轻拍打椅子,无奈,zh
-兴奋地拍打抱枕,兴奋,zh
+兴奋地拍打抱枕,高兴,zh
 甩开你的手,生气,zh
 用指甲轻轻敲击杯子,无奈,zh
 哽咽着说不出话,哭泣,zh
@@ -1871,7 +1871,7 @@ i can't believe how angry i am,生气,en
 悄悄别过头去,害羞,zh
 用指甲轻轻刮下巴,无奈,zh
 哭到窒息,哭泣,zh
-兴奋地拍打自己的腿,兴奋,zh
+兴奋地拍打自己的腿,高兴,zh
 害怕地缩起肩膀,害怕,zh
 震惊地后退半步,惊讶,zh
 紧张地搓着手,担心,zh
@@ -1916,7 +1916,7 @@ that caught me totally off guard,惊讶,en
 羞耻漏味,难为情,zh
 站在原地蹦蹦跳跳,高兴,zh
 羞耻漏电,难为情,zh
-快乐地上下晃动手臂,兴奋,zh
+快乐地上下晃动手臂,高兴,zh
 下意识地后退一步,慌张,zh
 羞耻漏光,难为情,zh
 把玩自己的发梢,无奈,zh
@@ -1927,14 +1927,14 @@ that caught me totally off guard,惊讶,en
 怒目而视,生气,zh
 假装要掐脸,调皮,zh
 小小声地回答,害羞,zh
-开心地前后摇摆,兴奋,zh
+开心地前后摇摆,高兴,zh
 带着哭腔,害怕,zh
 疑惑地歪着脑袋思考你说的话,疑惑,zh
 困惑地眨眼,疑惑,zh
 指挥若定,自信,zh
 邀请标记,心动,zh
 傲然,自信,zh
-蹦蹦跳跳停不下来,兴奋,zh
+蹦蹦跳跳停不下来,高兴,zh
 突然公主抱,调皮,zh
 放下,平静,zh
 this is absolutely revolting,厌恶,en
@@ -1952,7 +1952,7 @@ this is absolutely revolting,厌恶,en
 哭到干呕,哭泣,zh
 专注地做笔记,认真,zh
 疏离,平静,zh
-开心地拍打墙壁,兴奋,zh
+开心地拍打墙壁,高兴,zh
 用尾巴轻轻拍地表达不满,无奈,zh
 嘴角轻轻抽搐,厌恶,zh
 厌恶地皱起鼻子,厌恶,zh
@@ -1972,7 +1972,7 @@ this is absolutely revolting,厌恶,en
 泰然处之,平静,zh
 紧紧抱住尾巴,高兴,zh
 嫌弃地皱眉,厌恶,zh
-开心地小跳步前进,兴奋,zh
+开心地小跳步前进,高兴,zh
 舔舐嘴唇,心动,zh
 羞耻漏知,难为情,zh
 晃晃耳朵,高兴,zh
@@ -1987,39 +1987,39 @@ this is absolutely revolting,厌恶,en
 泪湿袖口,哭泣,zh
 双腿交叠,心动,zh
 假装要踩脚,调皮,zh
-开心地蹦着走路,兴奋,zh
+开心地蹦着走路,高兴,zh
 难以想象,惊讶,zh
 指尖颤抖,心动,zh
-bouncing on toes with barely contained energy,兴奋,en
-fidgeting with uncontrollable excitement,兴奋,en
-eyes sparkling with pure exhilaration,兴奋,en
-cheering loudly while jumping up and down,兴奋,en
-pumping fists in the air,兴奋,en
-grinning from ear to ear,兴奋,en
-squealing with delight,兴奋,en
-kicking feet against the chair repeatedly,兴奋,en
-spinning in circles unable to stay still,兴奋,en
-clapping hands rapidly,兴奋,en
-breathing fast with a huge smile,兴奋,en
-drumming fingers on the desk eagerly,兴奋,en
-whispering 'yes yes yes' under breath,兴奋,en
-throwing arms up in celebration,兴奋,en
-rocking back and forth with glee,兴奋,en
-興奮で足が勝手に動いている,兴奋,ja
-飛び跳ねて喜んでいる,兴奋,ja
-瞳が輝いて止まらない,兴奋,ja
-小躍りしてしまう,兴奋,ja
-興奮で震えが止まらない,兴奋,ja
-大声で歓声を上げる,兴奋,ja
-拳を突き上げて叫ぶ,兴奋,ja
-興奮して舌が滑る,兴奋,ja
-嬉しさで小走りになる,兴奋,ja
-興奮で頬が引きつる,兴奋,ja
-期待で胸が躍る,兴奋,ja
-はしゃぎすぎて言葉にならない,兴奋,ja
-目がキラキラして止まらない,兴奋,ja
-興奮して大声で笑う,兴奋,ja
-テンションが上がりすぎて止まらない,兴奋,ja
+bouncing on toes with barely contained energy,高兴,en
+fidgeting with uncontrollable excitement,高兴,en
+eyes sparkling with pure exhilaration,高兴,en
+cheering loudly while jumping up and down,高兴,en
+pumping fists in the air,高兴,en
+grinning from ear to ear,高兴,en
+squealing with delight,高兴,en
+kicking feet against the chair repeatedly,高兴,en
+spinning in circles unable to stay still,高兴,en
+clapping hands rapidly,高兴,en
+breathing fast with a huge smile,高兴,en
+drumming fingers on the desk eagerly,高兴,en
+whispering 'yes yes yes' under breath,高兴,en
+throwing arms up in celebration,高兴,en
+rocking back and forth with glee,高兴,en
+興奮で足が勝手に動いている,高兴,ja
+飛び跳ねて喜んでいる,高兴,ja
+瞳が輝いて止まらない,高兴,ja
+小躍りしてしまう,高兴,ja
+興奮で震えが止まらない,高兴,ja
+大声で歓声を上げる,高兴,ja
+拳を突き上げて叫ぶ,高兴,ja
+興奮して舌が滑る,高兴,ja
+嬉しさで小走りになる,高兴,ja
+興奮で頬が引きつる,高兴,ja
+期待で胸が躍る,高兴,ja
+はしゃぎすぎて言葉にならない,高兴,ja
+目がキラキラして止まらない,高兴,ja
+興奮して大声で笑う,高兴,ja
+テンションが上がりすぎて止まらない,高兴,ja
 wrinkling nose in obvious revulsion,厌恶,en
 turning away with a grimace,厌恶,en
 scraping tongue against teeth in disgust,厌恶,en

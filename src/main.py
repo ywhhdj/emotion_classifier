@@ -58,11 +58,6 @@ def parse_args(argv=None):
             "default":Config.WEIGHT_DECAY,
             "help":"权重衰减率",
         },
-        "warmup-ratio":{
-            "type":float,
-            "default":Config.WARMUP_RATIO,
-            "help":"预热轮数",
-        },
         "hidden-dim":{
             "type":int,
             "default":Config.HIDDEN_DIM,

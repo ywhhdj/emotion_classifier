@@ -1,9 +1,10 @@
-from .predictor import EmotionClassifier, ModelConfig, AsyncModelDownloader
-
-__version__ = "0.1.0"
+from .predictor import EmotionClassifier
+from .models.encoder import ONNXEncoder, SentenceTransformerEncoder
+from .models.config import VERSION
+__version__ = VERSION
 
 __all__ = [
     "EmotionClassifier",
-    "ModelConfig",
-    "AsyncModelDownloader"
+    "ONNXEncoder",
+    "SentenceTransformerEncoder"
 ]
