@@ -2,12 +2,11 @@
 __pycache__/
 *.py[codz]
 *$py.class
-output/
 
-# C extensions
 *.so
-modelsx
-to_onnx
+models
+scripts
+output
 
 # Distribution / packaging
 .Python

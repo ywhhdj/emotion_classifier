@@ -18,22 +18,24 @@ import sys
 import glob
 from pathlib import Path
 
-# 确保可以从上级目录导入 emotion_classifier 包
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src import EmotionClassifier
-from src.models.config import ModelRepository, ModelConfig
-
+# 包名兼容：源码布局是 src/，安装后的包名可能是 emotion_classifier
+try:
+    from src import EmotionClassifier  # type: ignore
+    from src.models.config import ModelRepository, ModelConfig  # type: ignore
+except ImportError:  # pragma: no cover
+    from emotion_classifier import EmotionClassifier
+    from emotion_classifier.models.config import ModelRepository, ModelConfig
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="emotion-classify",
-        description="多语言情感分类 CLI（支持 19 种情感，中英日，自动下载模型）",
+        description="多语言情感分类 CLI（支持多情感，中英日，自动下载模型）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
 
-    # ── 输入源（互斥）──
     input_group = p.add_mutually_exclusive_group(required=False)
     input_group.add_argument("text", nargs="?", help="待分类的文本内容")
     input_group.add_argument("--file", "-f", type=str, help="从文件读取文本（每行一条）")
@@ -43,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--backend", choices=["onnx", "pytorch", "auto"], default="auto",
                    help="推理后端 (默认 auto)")
     p.add_argument("--model-dir", type=str, default=None,
-                   help="模型目录路径（默认 ~/emotion_classifier/models）")
+                   help="模型目录路径（默认 ~/.emotion_classifier/models）")
     p.add_argument("--tokenizer-dir", type=str, default=None,
                    help="自定义分词器目录路径（ONNX 文件或 SentenceTransformer 名称）")
     p.add_argument("--encoder", type=str, default=None,
@@ -57,12 +59,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--list-models", action="store_true",
                    help="列出 model_dir 中所有可用的分类头和编码器模型")
     p.add_argument("--no-download", action="store_true", help="禁止自动下载（离线模式）")
-    p.add_argument("--device", choices=["cpu", "cuda"], default="cpu",
-                   help="推理设备 (默认 cpu)")
+    p.add_argument("--device", choices=["cpu", "cuda"], default=None,
+                   help="推理设备 (默认自动探测)")
+    p.add_argument("--cache", type=int, default=0,
+                   help="文本向量缓存条数（交互/重复文本场景可设 1024）")
     return p
 
 
-def load_texts(args) -> list[str]:
+def load_texts(args) -> list:
     if args.file:
         fpath = Path(args.file)
         if not fpath.exists():
@@ -74,69 +78,48 @@ def load_texts(args) -> list[str]:
         return list(args.batch)
     elif args.text:
         return [args.text]
-    else:
-        return []
+    return []
 
 
 def format_output(results, texts, top_k, as_json=False, verbose=False):
     if as_json:
         out = []
         for t, r in zip(texts, results):
-            out.append({
-                "text": t,
-                "predictions": [{"label": lbl, "score": sc} for lbl, sc in r]
-            })
+            out.append({"text": t, "predictions": [{"label": lbl, "score": sc} for lbl, sc in r]})
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return
 
     for i, (text, preds) in enumerate(zip(texts, results)):
-        if len(texts) > 1:
-            print(f"\n[{i+1}] 「{text}」")
-        else:
-            print(f"「{text}」")
+        prefix = f"\n[{i+1}] " if len(texts) > 1 else ""
+        print(f"{prefix}「{text}」")
         for rank, (lbl, sc) in enumerate(preds, 1):
             bar = "█" * int(sc * 20)
             print(f"  #{rank} {lbl:<6s} {sc:.2%}  {bar}")
 
 
-def resolve_model_dir(model_dir_arg: str | None) -> Path:
-    """解析模型目录路径"""
+def resolve_model_dir(model_dir_arg) -> Path:
     if model_dir_arg:
-        return Path(model_dir_arg)
+        return Path(model_dir_arg).expanduser()
     return ModelConfig.default_model_dir()
 
 
 def list_all_models(model_dir: Path):
-    """列出 model_dir 中所有可用的模型文件"""
     print(f"=== 模型目录: {model_dir} ===\n")
-
-    # 分类头 ONNX
+    from src.models.config import _priority_of
     cls_models = sorted(glob.glob(str(model_dir / "emotion_classifier*.onnx")))
     print(f"📦 分类头 ONNX ({len(cls_models)} 个):")
     if cls_models:
-        # 按优先级排序
-        def _pri(p):
-            n = os.path.basename(p).lower()
-            if n == "emotion_classifier.onnx":
-                return 0
-            elif "fp16" in n:
-                return 1
-            elif "int8" in n or "quant" in n:
-                return 2
-            else:
-                return 3
-        cls_models.sort(key=_pri)
+        cls_models.sort(key=lambda p: _priority_of(Path(p)))
         repo = ModelRepository(model_dir)
         preferred = repo.find_classifier_onnx()
         for m in cls_models:
             size = os.path.getsize(m) / 1e6
             marker = " ★" if preferred and Path(m) == preferred else ""
             print(f"     {os.path.basename(m):35s} {size:>8.1f} MB{marker}")
-        print(f"     ★ = 当前将使用的模型")
+        print("     ★ = 当前将使用的模型")
     else:
         print("     (无)")
 
-    # 编码器 ONNX
     enc_models = sorted(glob.glob(str(model_dir / "model_*.onnx")))
     print(f"\n🔧 编码器 ONNX ({len(enc_models)} 个):")
     if enc_models:
@@ -149,12 +132,10 @@ def list_all_models(model_dir: Path):
     else:
         print("     (无)")
 
-    # PyTorch 权重
     pt = model_dir / "emotion_classify.pt"
-    print(f"\n🔥 PyTorch 权重:")
+    print("\n🔥 PyTorch 权重:")
     if pt.exists():
-        size = pt.stat().st_size / 1e6
-        print(f"     {pt.name:35s} {size:>8.1f} MB")
+        print(f"     {pt.name:35s} {pt.stat().st_size / 1e6:>8.1f} MB")
     else:
         print("     (无)")
 
@@ -164,16 +145,17 @@ def main(argv=None):
     args = parser.parse_args(argv)
     model_dir = resolve_model_dir(args.model_dir)
 
-    # ── 特殊命令（无需初始化分类器）──
+    if args.top_k is not None and args.top_k < 1:
+        parser.error("--top-k 必须 >= 1")
+
     if args.labels:
-        lm_path = ModelConfig.get_label_map_path()
+        lm_path = ModelConfig.get_label_map_path(model_dir)#type: ignore
         if not lm_path.exists():
             print(f"[错误] 找不到标签映射文件: {lm_path}", file=sys.stderr)
-            print("请先运行一次 emotion-classify 以下载模型文件", file=sys.stderr)
+            print("请先运行一次 emotion-classify 或完成一次训练以生成 label_map.json", file=sys.stderr)
             sys.exit(1)
         with open(lm_path, "r", encoding="utf-8") as f:
-            mapping = json.load(f)
-        labels = list(mapping["label2id"].keys())
+            labels = list(json.load(f)["label2id"].keys())
         print(f"支持 {len(labels)} 种情感标签：")
         for i, lbl in enumerate(labels, 1):
             print(f"  {i:>2d}. {lbl}")
@@ -183,54 +165,38 @@ def main(argv=None):
         list_all_models(model_dir)
         return
 
-    if args.info:
-        # 创建一个临时分类器以获取信息（但不执行预测）
+    if args.info or args.update:
         clf = EmotionClassifier(
             model_dir=str(model_dir),
             backend=args.backend,
-            auto_download=not args.no_download,
+            auto_download=args.update or not args.no_download,
             device=args.device,
             tokenizer_dir=args.tokenizer_dir,
         )
+        if args.update:
+            clf.update_models()
+            print("模型更新完成")
+            return
         clf.ensure_loaded()
         info = clf.model_info()
         print("=== Emotion Classifier 模型状态 ===")
         print(f"  后端: {info['backend']}")
+        print(f"  设备: {info['device']}")
         print(f"  编码器类型: {info.get('encoder_type', 'N/A')}")
         print(f"  目录: {info['model_dir']}")
         print(f"  标签数: {info['num_labels']}")
-        # 显示当前分类头
-        repo = ModelRepository(model_dir)
-        cls_path = repo.find_classifier_onnx()
-        if cls_path:
-            size = cls_path.stat().st_size / 1e6
-            print(f"  ★ 分类头: {cls_path.name} ({size:.1f} MB)")
-        else:
-            print(f"  ★ 分类头: (未找到)")
+        print(f"  ★ 分类头: {info.get('classifier') or '(未找到)'}")
         for fname, finfo in info["files"].items():
             status = f"✅ {finfo['size_mb']} MB" if finfo["exists"] else "❌ 缺失"
             print(f"  {fname:30s} {status}")
         return
 
-    if args.update:
-        clf = EmotionClassifier(
-            model_dir=str(model_dir),
-            backend=args.backend,
-            auto_download=True,
-            device=args.device,
-        )
-        clf.update_models()
-        print("模型更新完成")
-        return
-
-    # ── 检查是否有输入 ──
     texts = load_texts(args)
     if not texts and not args.interactive:
         parser.print_help()
-        print("\n[提示] 使用 emotion-classify \"文本\" 开始预测")
+        print('\n[提示] 使用 emotion-classify "文本" 开始预测')
         sys.exit(0)
 
-    # ── 初始化分类器 ──
     try:
         clf = EmotionClassifier(
             model_dir=str(model_dir),
@@ -239,25 +205,17 @@ def main(argv=None):
             auto_download=not args.no_download,
             device=args.device,
             tokenizer_dir=args.tokenizer_dir,
+            encoder_cache_size=args.cache, #type: ignore
         )
-        # 懒加载会在第一次 predict 时自动触发，但我们可以在 verbose 模式下提前加载
         if args.verbose:
             clf.ensure_loaded()
             print(f"[info] 后端: {clf.backend}")
             print(f"[info] 模型目录: {model_dir}")
-            repo = ModelRepository(model_dir)
-            cls_path = repo.find_classifier_onnx()
-            if cls_path:
-                print(f"[info] 分类头: {cls_path.name}")
             print(f"[info] 支持标签: {', '.join(clf.get_labels())}\n")
-    except FileNotFoundError as e:
-        print(f"[错误] {e}", file=sys.stderr)
-        sys.exit(1)
-    except ValueError as e:
+    except (FileNotFoundError, ValueError) as e:
         print(f"[错误] {e}", file=sys.stderr)
         sys.exit(1)
 
-    # ── 交互模式 ──
     if args.interactive:
         print("交互模式（输入空行或 Ctrl+C 退出）:")
         try:
@@ -269,15 +227,19 @@ def main(argv=None):
                 format_output(result, [text], args.top_k, args.json, args.verbose)
         except (KeyboardInterrupt, EOFError):
             print("\n退出交互模式")
+        finally:
+            clf.close()
         return
 
-    # ── 正常预测 ──
     if not texts:
         print("[错误] 没有有效文本输入", file=sys.stderr)
         sys.exit(1)
 
-    results = clf.predict(texts, top_k=args.top_k)
-    format_output(results, texts, args.top_k, args.json, args.verbose)
+    try:
+        results = clf.predict(texts, top_k=args.top_k)
+        format_output(results, texts, args.top_k, args.json, args.verbose)
+    finally:
+        clf.close()
 
 
 if __name__ == "__main__":
