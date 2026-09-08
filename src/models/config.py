@@ -25,9 +25,9 @@ class ModelRepository:
     DEFAULT_REPO_URL = f"https://github.com/ywhhdj/emotion_classifier/releases/download/v{VERSION}"
 
     CHECKSUMS = {
-        "emotion_classifier.onnx": "sha256:c170c1771c6b3f428f77da792605a834729304217fec39801d1adab19ba283cc",
-        "emotion_classifier_fp16.onnx": "sha256:3115eeb73db3f4c2cbda454bf921982d6e04655d5adf41f85cdc1327c2910d75",
-        "emotion_classify.pt": "sha256:79c5ed6bb90145b48ae766d763bb86f29c2dec4e147dbdcaa04f65823205e9ac",
+        "emotion_classifier.onnx": "sha256:2d264d68c3c8bc96289a95a946412b712276885442ba29e007a06dfb1f3dda47",
+        "emotion_classifier_int8.onnx": "sha256:67d10642da197a92bf5414f67f8e20c1ddd42f6ac82c11927da1b37b0bc9b0c6",
+        "emotion_classify.pt": "sha256:b888f4bb0f0ba94a736debb20532630cb7749b435596de67ab8a73f9fc7b70c9",
         "model_quint8_avx2.onnx": None,  # 编码器来自 HuggingFace，不校验
     }
 
