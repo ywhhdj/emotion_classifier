@@ -1,0 +1,10 @@
+{
+  "pruning_method": "iterative",
+  "target_ffn_size": 1536,
+  "target_num_of_heads": 8,
+  "n_iters": 12,
+  "head_even_masking": true,
+  "ffn_even_masking": true,
+  "multiple_of": 64,
+  "use_logits": false
+}

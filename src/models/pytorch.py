@@ -19,7 +19,7 @@ class StochasticDepth(nn.Module):
 class EmotionClassifier(nn.Module):
     """推理侧分类头，结构需与 train/models.py 的 LightEmotionClassifier 保持一致。"""
 
-    def __init__(self, input_dim=384, num_classes=19, hidden_dim=128,
+    def __init__(self, input_dim=768, num_classes=18, hidden_dim=128,
                  dropout=0.3, stochastic_p=0.2):
         super().__init__()
         self.proj = nn.Sequential(

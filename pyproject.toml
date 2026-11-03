@@ -1,0 +1,73 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "emotion-classifier"
+version = "0.2.0"
+description = "多语言轻量情感分类（18 标签 / 中英日 / XLM-R 三语裁剪 + 剪枝 + Rust 内核）"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "numpy>=1.21",
+    "onnxruntime>=1.14",
+    "transformers>=4.30",
+    "httpx>=0.24",
+]
+
+[project.optional-dependencies]
+train = [
+    "torch>=1.12",
+    "transformers>=4.30",
+    "peft>=0.10",
+    "accelerate>=0.25",
+    "scikit-learn>=1.0",
+    "pandas>=1.3",
+    "python-dotenv>=0.21",
+    "onnx>=1.14",
+    "onnxsim>=0.4",
+    "scipy>=1.10",
+]
+prune = [
+    "textpruner>=1.0",
+    "onnxconverter-common>=1.13",
+]
+augment = [
+    "sentencepiece>=0.1.99",
+]
+legacy = [
+    "sentence-transformers>=2.2",
+]
+full = [
+    "torch>=1.12",
+    "transformers>=4.30",
+    "peft>=0.10",
+    "accelerate>=0.25",
+    "scikit-learn>=1.0",
+    "pandas>=1.3",
+    "python-dotenv>=0.21",
+    "onnx>=1.14",
+    "onnxsim>=0.4",
+    "onnxconverter-common>=1.13",
+    "scipy>=1.10",
+    "textpruner>=1.0",
+    "sentencepiece>=0.1.99",
+    "sentence-transformers>=2.2",
+]
+
+[project.scripts]
+emotion-classify = "src.cli:main"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "src._core"
+bindings = "pyo3"
+python-source = "."
+manifest-path = "rust/crates/emotion-python/Cargo.toml"
+include = [{ path = "src/data/*.json", format = ["sdist", "wheel"] }]

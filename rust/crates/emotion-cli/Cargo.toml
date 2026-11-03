@@ -1,0 +1,22 @@
+[package]
+name = "emotion-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "离线批量打标 / bench / 模型自检"
+
+[dependencies]
+emotion-core = { path = "../emotion-core" }
+emotion-runtime = { path = "../emotion-runtime" }
+emotion-postprocess = { path = "../emotion-postprocess" }
+emotion-tokenizer = { path = "../emotion-tokenizer" }
+anyhow.workspace = true
+rayon.workspace = true
+serde_json.workspace = true
+
+[features]
+backend-ort = ["emotion-runtime/backend-ort"]
+
+[[bin]]
+name = "emotion-cli"
+path = "src/main.rs"

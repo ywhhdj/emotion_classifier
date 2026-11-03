@@ -1,0 +1,13 @@
+[package]
+name = "emotion-postprocess"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "softmax / 温度 / per-class 阈值 / top-k"
+
+[dependencies]
+emotion-core = { path = "../emotion-core" }
+
+[lib]
+name = "emotion_postprocess"
+path = "src/lib.rs"

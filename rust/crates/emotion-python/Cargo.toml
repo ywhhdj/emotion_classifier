@@ -1,0 +1,21 @@
+[package]
+name = "emotion-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "PyO3 绑定：emotion_classifier._core"
+
+[dependencies]
+emotion-core = { path = "../emotion-core" }
+emotion-runtime = { path = "../emotion-runtime" }
+emotion-postprocess = { path = "../emotion-postprocess" }
+pyo3 = { version = "0.21", features = ["extension-module", "abi3-py310", "macros"] }
+numpy = "0.21"
+
+[features]
+backend-ort = ["emotion-runtime/backend-ort"]
+
+[lib]
+name = "emotion_python"
+crate-type = ["cdylib"]
+path = "src/lib.rs"

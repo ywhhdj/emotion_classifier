@@ -1,0 +1,5 @@
+{
+  "device": "cuda",
+  "output_dir": "model/pruned",
+  "save_model": true
+}

@@ -218,3 +218,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# .gitignore
+models/
+output/
+data/
+*.npz
+*.pt
+*.bin
+*.onnx
+__pycache__/
+.ipynb_checkpoints/

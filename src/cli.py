@@ -42,8 +42,8 @@ def build_parser() -> argparse.ArgumentParser:
     input_group.add_argument("--batch", "-b", nargs="+", help="批量文本（空格分隔）")
 
     p.add_argument("--top-k", "-k", type=int, default=3, help="返回前 K 个情感标签 (默认 3)")
-    p.add_argument("--backend", choices=["onnx", "pytorch", "auto"], default="auto",
-                   help="推理后端 (默认 auto)")
+    p.add_argument("--backend", choices=["auto", "rust", "onnx", "pytorch"], default="auto",
+                   help="推理后端：rust=Rust 内核（默认优先）/ onnx / pytorch / auto")
     p.add_argument("--model-dir", type=str, default=None,
                    help="模型目录路径（默认 ~/.emotion_classifier/models）")
     p.add_argument("--tokenizer-dir", type=str, default=None,
@@ -182,7 +182,10 @@ def main(argv=None):
         print("=== Emotion Classifier 模型状态 ===")
         print(f"  后端: {info['backend']}")
         print(f"  设备: {info['device']}")
-        print(f"  编码器类型: {info.get('encoder_type', 'N/A')}")
+        print(f"  编码器: {info.get('encoder', 'N/A')}"
+              f"（{'整图' if info.get('whole_graph') else '编码器+头'}）")
+        print(f"  版本: {info.get('version', 'N/A')}"
+              f"｜校准: {'是' if info.get('calibrated') else '否'}")
         print(f"  目录: {info['model_dir']}")
         print(f"  标签数: {info['num_labels']}")
         print(f"  ★ 分类头: {info.get('classifier') or '(未找到)'}")
