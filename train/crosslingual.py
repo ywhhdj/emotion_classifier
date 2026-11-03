@@ -29,16 +29,30 @@ def _group_id(text: str) -> str:
 class CrossLingualExpander:
     """zh/en -> ja/en 的翻译扩充器（复用 BackTranslator 的 NLLB 引擎）。"""
 
-    def __init__(self, model_name: Optional[str] = None, device: str = "cpu",
-                 cache_path: Optional[str] = None):
+    def __init__(
+        self,
+        model_name: Optional[str] = None,
+        device: str = "cpu",
+        cache_path: Optional[str] = None
+    ):
         self.bt = BackTranslator(model_name=model_name, device=device, cache_path=cache_path)
 
-    def transfer(self, texts: Sequence[str], src_lang: str, tgt_lang: str,
-                 labels: Optional[Sequence[str]] = None) -> List[dict]:
+    def transfer(
+        self,
+        texts: Sequence[str],
+        src_lang: str,
+        tgt_lang: str,
+        labels: Optional[Sequence[str]] = None
+    ) -> List[dict]:
         if not texts:
             return []
-        translated = self.bt.translate(list(texts), src=src_lang, tgt=tgt_lang,
-                                       num_return=1, max_new_tokens=96)
+        translated = self.bt.translate(
+            list(texts),
+            src=src_lang,
+            tgt=tgt_lang,
+            num_return=1, 
+            max_new_tokens=96
+        )
         rows = []
         for i, t in enumerate(translated):
             t = (t or "").strip()
@@ -66,10 +80,13 @@ def _quota_need(counts: Dict[str, int]) -> Dict[str, int]:
     return need
 
 
-def expand_crosslingual(df: pd.DataFrame, device: str = "cpu",
-                        model_name: Optional[str] = None,
-                        cache_path: Optional[str] = None,
-                        max_ratio: Optional[float] = None) -> pd.DataFrame:
+def expand_crosslingual(
+    df: pd.DataFrame,
+    device: str = "cpu",
+    model_name: Optional[str] = None,
+    cache_path: Optional[str] = None,
+    max_ratio: Optional[float] = None
+) -> pd.DataFrame:
     """按配额把高资源语言的样本翻译到低资源语言。
 
     返回：原 df（group_id/is_mt 补全）+ 新增 MT 行。
@@ -105,8 +122,12 @@ def expand_crosslingual(df: pd.DataFrame, device: str = "cpu",
         if take <= 0:
             continue
         sample = pool.sample(n=take, random_state=Config.RANDOM_STATE)
-        rows = expander.transfer(sample["text"].astype(str).tolist(), src_lang, tgt_lang,
-                                 sample["label"].astype(str).tolist())
+        rows = expander.transfer(
+            sample["text"].astype(str).tolist(),
+            src_lang,
+            tgt_lang,
+            sample["label"].astype(str).tolist()
+        )
         # 标签 id 回填
         l2i = df.drop_duplicates("label").set_index("label")["label_id"].to_dict()
         for r in rows:

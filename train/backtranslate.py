@@ -109,8 +109,12 @@ class BackTranslator:
             return
         os.makedirs(os.path.dirname(self.cache_path) or ".", exist_ok=True)
         with open(self.cache_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps({"src": src, "lang": lang, "label": label,
-                                "candidates": candidates}, ensure_ascii=False) + "\n")
+            f.write(json.dumps({
+                "src": src,
+                "lang": lang,
+                "label": label,
+                "candidates": candidates
+            }, ensure_ascii=False) + "\n")
 
     # ── 模型 ──
     def _ensure_model(self):
@@ -142,11 +146,16 @@ class BackTranslator:
         batch = self._tok(list(texts), return_tensors="pt", padding=True,
                           truncation=True, max_length=128).to(self.device)
         bos = self._forced_bos(self._tok, tgt_code)
-        gen_kwargs = {"max_new_tokens": max_new_tokens, "num_beams": max(2, num_return * 2),
-                      "num_return_sequences": num_return, "no_repeat_ngram_size": 3,
-                      "do_sample": num_return > 1}
+        gen_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "num_beams": max(2, num_return * 2),
+            "num_return_sequences": num_return,
+            "no_repeat_ngram_size": 3,
+            "do_sample": num_return > 1
+        }
         if bos is not None:
             gen_kwargs["forced_bos_token_id"] = bos
+        self._model.generation_config.max_length = None
         with torch.no_grad():
             out = self._model.generate(**batch, **gen_kwargs)
         return [self._tok.decode(g, skip_special_tokens=True) for g in out]
@@ -196,16 +205,24 @@ class BackTranslator:
                 continue
             cands = self.round_trip(t, lg, factor=factor)
             for c in cands:
-                out.append({"text": c, "label": lb, "lang": lg, "is_mt": 1})
+                out.append({
+                    "text": c,
+                    "label": lb,
+                    "lang": lg, 
+                    "is_mt": 1
+                })
             if cands:
                 self._append_cache(t, lg, lb, cands)
         return out
 
 
-def augment_with_backtranslation(df: pd.DataFrame, factor: int = 1,
-                                 model_name: Optional[str] = None,
-                                 cache_path: Optional[str] = None,
-                                 device: str = "cpu") -> pd.DataFrame:
+def augment_with_backtranslation(
+    df: pd.DataFrame,
+    factor: int = 1,
+    model_name: Optional[str] = None,
+    cache_path: Optional[str] = None,
+    device: str = "cpu"
+) -> pd.DataFrame:
     """对训练集做回译增强，返回拼接后的 DataFrame（只影响传入的 df）。"""
     bt = BackTranslator(model_name=model_name, device=device, cache_path=cache_path)
     texts = df["text"].astype(str).tolist()

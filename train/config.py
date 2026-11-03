@@ -225,10 +225,10 @@ class Config:
     BT_LANG_CODE = {"zh": "zho_Hans", "en": "eng_Latn", "ja": "jpn_Japa"}
     BT_PIVOT_SIDE = {"zh": "deu_Latn", "en": "deu_Latn", "ja": "jpn_Japa"}  # en 走 de/fr，见代码
     BT_FACTOR = 1                          # 每条原样本最多产出几条回译样本
-    BT_MIN_JACCARD = 0.45                  # 过近=无增益
-    BT_MAX_JACCARD = 0.95                  # 过远=语义漂移
-    BT_MIN_LEN_RATIO = 0.6
-    BT_MAX_LEN_RATIO = 1.7
+    BT_MIN_JACCARD = 0.3                  # 过近=无增益
+    BT_MAX_JACCARD = 0.98                  # 过远=语义漂移
+    BT_MIN_LEN_RATIO = 0.45
+    BT_MAX_LEN_RATIO = 2.0
 
     # 跨语言扩充（高资源 -> 低资源）
     USE_CROSSLING = False

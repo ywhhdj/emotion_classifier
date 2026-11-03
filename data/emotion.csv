@@ -1,4 +1,4 @@
-text,label,lang
+﻿text,label,lang
 开心地小跳着走路,高兴,zh
 不露声色,平静,zh
 气鼓鼓地跺了一下,生气,zh
@@ -2130,7 +2130,6 @@ stuttering when spoken to directly,害羞,en
 照れくさそうに髪をいじる,害羞,ja
 ちらっと見てすぐ目をそらす,害羞,ja
 頬を染めて微笑む,害羞,ja
-恥ずかしくてもじもじする,害羞,ja
 顔を袖で隠して照れる,害羞,ja
 褒められて照れながら笑う,害羞,ja
 恥ずかしくて俯く,害羞,ja
@@ -2369,7 +2368,7 @@ making a questioning gesture,疑惑,en
 意味が分からず眉をひそめる,疑惑,ja
 何か変だと気づく,疑惑,ja
 腑に落ちない表情で黙る,疑惑,ja
-それで合ってる？と確認する,疑惑,ja
+それで合ってる?と確認する,疑惑,ja
 混乱して何度も考え直す,疑惑,ja
 変だなと首をかしげる,疑惑,ja
 うーんと唸りながら考える,疑惑,ja
@@ -2520,7 +2519,6 @@ freezing when attention is on them,难为情,en
 恥ずかしさで顔が熱い,难为情,ja
 恥ずかしくて逃げ出したい,难为情,ja
 恥ずかしさで頭が真っ白,难为情,ja
-恥ずかしくてもじもじする,难为情,ja
 恥ずかしさで言葉に詰まる,难为情,ja
 恥ずかしくて消えたい気分,难为情,ja
 恥ずかしい思いをして俯く,难为情,ja
@@ -2535,7 +2533,6 @@ eyes curved like crescent moons,高兴,en
 laughing with entire body,高兴,en
 spinning around happily,高兴,en
 radiating pure delight,高兴,en
-grinning from ear to ear,高兴,en
 patting everyone on the back,高兴,en
 dancing a little jig,高兴,en
 laughing until crying,高兴,en

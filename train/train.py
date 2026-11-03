@@ -1,12 +1,6 @@
-"""训练流水线（v2.0：XLM-R 基座 + e2e/cached 双模）。
+"""训练流水线
 
 阶段：clean -> split -> aug -> [embed(仅 cached)] -> train -> cv -> eval -> onnx -> infer
-
-v2 新增：
-  * stage_train_e2e   —— 文本级端到端训练（LoRA / 全量），不使用 embeddings.npz
-  * stage_calibrate   —— temperature + per-class 阈值
-  * stage_onnx        —— 改为导出 encoder+head 整图（v1 只导分类头）
-  * cross_validate    —— 支持 e2e
 """
 
 import copy
@@ -200,11 +194,20 @@ def stage_split(args, df: Optional[pd.DataFrame] = None, folds: int = 1) -> dict
             d[cols].to_csv(os.path.join(Config.OUTPUT_PATH, f"{name}.csv"),  # type: ignore
                            index=False, encoding="utf-8-sig")
         with open(Config.LABELMAP_PATH, "w", encoding="utf-8") as f:  # type: ignore
-            json.dump({"label2id": label2id, "id2label": id2label,
-                       "num_labels": num_labels}, f, ensure_ascii=False, indent=2)
+            json.dump({
+                "label2id": label2id,
+                "id2label": id2label,
+                "num_labels": num_labels
+            }, f, ensure_ascii=False, indent=2)
 
-    return {"train": train_df, "val": val_df, "test": test_df,
-            "label2id": label2id, "id2label": id2label, "num_labels": num_labels}
+    return {
+        "train": train_df,
+        "val": val_df,
+        "test": test_df,
+        "label2id": label2id,
+        "id2label": id2label,
+        "num_labels": num_labels
+    }
 
 
 # ────────────────────────── 增强（仅作用于 train）──────────────────────────
@@ -286,7 +289,8 @@ def ensure_encoder_dir() -> str:
     if not Config.FALLBACK_TO_HUB:
         raise FileNotFoundError(
             f"基座目录不完整: {local}\n"
-            f"请先: python scripts/vocab/trim_vocab.py --mode intersect --out {local}")
+            f"请先: python scripts/vocab/trim_vocab.py --mode intersect --out {local}"
+        )
 
     if not Config.MODEL_AUTO_DOWNLOAD:
         raise FileNotFoundError(f"基座目录不存在: {local}")
@@ -307,8 +311,11 @@ def ensure_encoder_dir() -> str:
 
 
 def _load_onnx_encoder(onnx_path: str, tokenizer_dir: Optional[str] = None) -> ONNXEncoder:
-    return ONNXEncoder(onnx_path=onnx_path, tokenizer_dir=tokenizer_dir,
-                       tokenizer_name=Config.MODEL_NAME)
+    return ONNXEncoder(
+        onnx_path=onnx_path,
+        tokenizer_dir=tokenizer_dir,
+        tokenizer_name=Config.MODEL_NAME
+    )
 
 
 def stage_embed(args, split: Optional[dict] = None, backend: str = "auto") -> dict:
@@ -328,8 +335,10 @@ def stage_embed(args, split: Optional[dict] = None, backend: str = "auto") -> di
 
     if backend == "onnx":
         print(f"[embed] 使用 ONNX 编码器缓存: {Config.onnx_encoder_cache()}")
-        encoder = _load_onnx_encoder(Config.onnx_encoder_cache(),
-                                     Config.tokenizer_dir_for_train())
+        encoder = _load_onnx_encoder(
+            Config.onnx_encoder_cache(),
+            Config.tokenizer_dir_for_train()
+        )
         def encode_list(texts, langs=None):
             return encoder.encode(texts, lang=langs, batch_size=args.batch_size, normalize=False)
     else:
@@ -363,8 +372,10 @@ def stage_embed(args, split: Optional[dict] = None, backend: str = "auto") -> di
 def _build_loaders(emb: dict, args, num_workers: int = 0):
     loaders = {}
     for name in ["train", "val", "test"]:
-        tensors = [torch.from_numpy(np.asarray(emb[f"X_{name}"], dtype=np.float32)),
-                   torch.from_numpy(np.asarray(emb[f"y_{name}"], dtype=np.int64))]
+        tensors = [
+            torch.from_numpy(np.asarray(emb[f"X_{name}"], dtype=np.float32)),
+            torch.from_numpy(np.asarray(emb[f"y_{name}"], dtype=np.int64))
+        ]
         if f"w_{name}" in emb:
             tensors.append(torch.from_numpy(np.asarray(emb[f"w_{name}"], dtype=np.float32)))
         ds = TensorDataset(*tensors)
@@ -424,14 +435,21 @@ def stage_train(args, emb: Optional[dict] = None, num_labels: Optional[int] = No
     ema_model = copy.deepcopy(model)
 
     counts = np.bincount(np.asarray(emb["y_train"]).astype(int), minlength=num_labels)
-    weights = torch.tensor(class_weights(counts, Config.CLASS_WEIGHT,
-                                         Config.EFFECTIVE_BETA), dtype=torch.float).to(device)
-    criterion = FocalLoss(gamma=Config.FOCAL_GAMMA if Config.USE_FOCAL_LOSS else 0.0,
-                          weight=weights, label_smoothing=Config.LABEL_SMOOTHING).to(device)
+    weights = torch.tensor(class_weights(
+        counts, Config.CLASS_WEIGHT,
+        Config.EFFECTIVE_BETA
+    ), dtype=torch.float).to(device)
+    criterion = FocalLoss(
+        gamma=Config.FOCAL_GAMMA if Config.USE_FOCAL_LOSS else 0.0,
+        weight=weights,
+        label_smoothing=Config.LABEL_SMOOTHING
+    ).to(device)
 
-    optimizer = torch.optim.AdamW(model.parameters(),
-                                  lr=getattr(args, "lr", Config.CACHED_LR),
-                                  weight_decay=args.weight_decay)
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=getattr(args, "lr", Config.CACHED_LR),
+        weight_decay=args.weight_decay
+    )
     scheduler = CosineAnnealingWarmRestarts(
         optimizer, T_0=Config.SCHED_T0, T_mult=Config.SCHED_T_MULT, eta_min=Config.SCHED_ETA_MIN)
 
@@ -491,11 +509,16 @@ def stage_train(args, emb: Optional[dict] = None, num_labels: Optional[int] = No
 
         if score > best_score + 1e-5:
             best_score, bad_epochs = score, 0
-            torch.save({"state_dict": ema_model.state_dict(), "num_labels": num_labels,
-                        "hidden_dim": args.hidden_dim, "input_dim": input_dim,
-                        "id2label": json.load(open(Config.LABELMAP_PATH,  # type: ignore
-                                                   encoding="utf-8"))["id2label"]},
-                       Config.MODEL_PATH)  # type: ignore
+            torch.save({
+                "state_dict": ema_model.state_dict(),
+                "num_labels": num_labels,
+                "hidden_dim": args.hidden_dim,
+                "input_dim": input_dim,
+                "id2label": json.load(open(
+                    Config.LABELMAP_PATH,  # type: ignore
+                    encoding="utf-8"
+                ))["id2label"]
+            },Config.MODEL_PATH)  # type: ignore
             print(f"[train] 保存最佳模型 @ ep {epoch}（{metric_name}={score:.4f}）")
         else:
             bad_epochs += 1
@@ -507,10 +530,17 @@ def stage_train(args, emb: Optional[dict] = None, num_labels: Optional[int] = No
     if Config.WRITE_FILE:
         with open(os.path.join(Config.OUTPUT_PATH, "train_history.json"),  # type: ignore
                   "w", encoding="utf-8") as f:
-            json.dump({"metric": metric_name, "best": best_score,
-                       "history": [{"epoch": h[0], "loss": h[1], "train_acc": h[2],
-                                    metric_name: h[3], "val_acc": h[4]} for h in history]},
-                      f, ensure_ascii=False, indent=2)
+            json.dump({
+                "metric": metric_name,
+                "best": best_score,
+                "history": [{
+                    "epoch": h[0],
+                    "loss": h[1],
+                    "train_acc": h[2],
+                    metric_name: h[3],
+                    "val_acc": h[4]
+                } for h in history]},
+            f, ensure_ascii=False, indent=2)
     return model
 
 
@@ -535,8 +565,10 @@ def _fgm_attack(model, eps: float):
 def _rdrop_kl(logits1, logits2, alpha: float) -> torch.Tensor:
     p1 = F.log_softmax(logits1, dim=-1)
     p2 = F.log_softmax(logits2, dim=-1)
-    return alpha * 0.5 * (F.kl_div(p1, p2, reduction="batchmean", log_target=True)
-                          + F.kl_div(p2, p1, reduction="batchmean", log_target=True))
+    return alpha * 0.5 * (
+        F.kl_div(p1, p2, reduction="batchmean", log_target=True)
+        + F.kl_div(p2, p1, reduction="batchmean", log_target=True)
+    )
 
 
 def stage_train_e2e(args, split: dict, num_labels: int):
@@ -549,14 +581,15 @@ def stage_train_e2e(args, split: dict, num_labels: int):
     set_seed(getattr(args, "seed", Config.SEED))
     device = torch.device("cuda" if (args.device == "cuda" and torch.cuda.is_available()) else "cpu")
 
-    tokenizer = load_tokenizer(Config.encoder_dir(),
-                               Config.tokenizer_dir_for_train())
+    tokenizer = load_tokenizer(
+        Config.encoder_dir(),
+        Config.tokenizer_dir_for_train()
+    )
     pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 1
 
     use_lang_token = getattr(args, "use_lang_token", Config.USE_LANG_TOKEN)
     model = build_encoder_lora(
         num_labels=num_labels,
-        model_name=getattr(args, "model_name", Config.MODEL_NAME),
         r=getattr(args, "lora_r", Config.LORA_R),
         unfreeze_from=getattr(args,"lora_unfreeze_from",Config.LORA_UNFREEZE_FROM)
     )
@@ -579,22 +612,36 @@ def stage_train_e2e(args, split: dict, num_labels: int):
             use_lang_token=use_lang_token,                           
             sample_weight=sw
         )
-        return DataLoader(ds, batch_size=args.batch_size, shuffle=shuffle,
-                          num_workers=getattr(args, "num_workers", Config.NUM_WORKERS),
-                          collate_fn=make_collate(pad_id=pad_id),
-                          pin_memory=(device.type == "cuda"),
-                          drop_last=(shuffle and len(ds) % args.batch_size == 1))
+        return DataLoader(
+            ds,
+            batch_size=args.batch_size,
+            shuffle=shuffle,
+            num_workers=getattr(args, "num_workers", Config.NUM_WORKERS),
+            collate_fn=make_collate(pad_id=pad_id),
+            pin_memory=(device.type == "cuda"),
+            drop_last=(shuffle and len(ds) % args.batch_size == 1)
+        )
 
     loaders = {n: _mk(n, n == "train") for n in ["train", "val", "test"]}
 
     counts = np.bincount(np.asarray(split["train"]["label_id"]).astype(int), minlength=num_labels)
-    weights = torch.tensor(class_weights(counts, Config.CLASS_WEIGHT,
-                                         Config.EFFECTIVE_BETA), dtype=torch.float).to(device)
-    criterion = FocalLoss(gamma=Config.FOCAL_GAMMA if Config.USE_FOCAL_LOSS else 0.0,
-                          weight=weights, label_smoothing=Config.LABEL_SMOOTHING).to(device)
+    weights = torch.tensor(class_weights(
+        counts,
+        Config.CLASS_WEIGHT,
+        Config.EFFECTIVE_BETA
+    ), dtype=torch.float).to(device)
+    criterion = FocalLoss(
+        gamma=Config.FOCAL_GAMMA if Config.USE_FOCAL_LOSS else 0.0,
+        weight=weights,
+        label_smoothing=Config.LABEL_SMOOTHING
+    ).to(device)
 
-    groups = build_param_groups(model, lora_lr=getattr(args, "lr", Config.LORA_LR),
-                                head_lr=Config.HEAD_LR, llrd=Config.LLRD)
+    groups = build_param_groups(
+        model,
+        lora_lr=getattr(args, "lr", Config.LORA_LR),
+        head_lr=Config.HEAD_LR,
+        llrd=Config.LLRD
+    )
     optimizer = torch.optim.AdamW(groups, weight_decay=args.weight_decay)
     scheduler = CosineAnnealingWarmRestarts(
         optimizer, T_0=Config.SCHED_T0, T_mult=Config.SCHED_T_MULT, eta_min=Config.SCHED_ETA_MIN)
@@ -688,13 +735,17 @@ def stage_train_e2e(args, split: dict, num_labels: int):
         if score > best_score + 1e-5:
             best_score, bad_epochs = score, 0
             merged = merge_lora(copy.deepcopy(eval_model))
-            torch.save({"state_dict": merged.state_dict(), "num_labels": num_labels,
-                        "model_name": Config.encoder_dir(),
-                        "encoder_dir": Config.encoder_dir(),
-                        "trimmed": Config.is_trimmed(), "train_mode": "e2e",
-                        "id2label": json.load(open(Config.LABELMAP_PATH,  # type: ignore
-                                                   encoding="utf-8"))["id2label"]},
-                       Config.MODEL_PATH)  # type: ignore
+            torch.save({
+                "state_dict": merged.state_dict(),
+                "num_labels": num_labels,
+                "model_name": Config.encoder_dir(),
+                "encoder_dir": Config.encoder_dir(),
+                "trimmed": Config.is_trimmed(), "train_mode": "e2e",
+                "id2label": json.load(open(
+                    Config.LABELMAP_PATH,  # type: ignore
+                    encoding="utf-8"
+                ))["id2label"]
+            },Config.MODEL_PATH)  # type: ignore
             print(f"[e2e] 保存最佳模型 @ ep {epoch}（{metric_name}={score:.4f}）")
         else:
             bad_epochs += 1
@@ -704,12 +755,22 @@ def stage_train_e2e(args, split: dict, num_labels: int):
 
     print(f"[e2e] 最佳 {metric_name}: {best_score:.4f} → {Config.MODEL_PATH}")  # type: ignore
     if Config.WRITE_FILE:
-        with open(os.path.join(Config.OUTPUT_PATH, "train_history.json"),  # type: ignore
-                  "w", encoding="utf-8") as f:
-            json.dump({"metric": metric_name, "best": best_score, "mode": "e2e",
-                       "history": [{"epoch": h[0], "loss": h[1], "train_acc": h[2],
-                                    metric_name: h[3], "val_acc": h[4]} for h in history]},
-                      f, ensure_ascii=False, indent=2)
+        with open(
+            os.path.join(Config.OUTPUT_PATH, "train_history.json"),  # type: ignore
+            "w", encoding="utf-8"
+        ) as f:
+            json.dump({
+                "metric": metric_name,
+                "best": best_score,
+                "mode": "e2e",
+                "history": [{
+                    "epoch": h[0],
+                    "loss": h[1],
+                    "train_acc": h[2],
+                    metric_name: h[3], 
+                    "val_acc": h[4]
+                } for h in history]
+            },f, ensure_ascii=False, indent=2)
     return merge_lora(model)
 
 
@@ -828,8 +889,12 @@ def stage_eval(
     else:
         hidden_dim = ckpt.get("hidden_dim", Config.HIDDEN_DIM)
         input_dim = ckpt.get("input_dim", Config.INPUT_DIM)
-        model = LightEmotionClassifier(input_dim=input_dim, num_classes=num_labels,
-                                       hidden_dim=hidden_dim, dropout=0.0).to(device)
+        model = LightEmotionClassifier(
+            input_dim=input_dim,
+            num_classes=num_labels,
+            hidden_dim=hidden_dim,
+            dropout=0.0
+        ).to(device)
         model.load_state_dict(state)
         model.eval()
         text_pred = False
@@ -873,8 +938,13 @@ def stage_eval(
 
     id2label_i = {int(k): v for k, v in id2label.items()}
     target_names = [id2label_i[i] for i in range(num_labels)]
-    report = classification_report(y_test, preds, target_names=target_names,
-                                   digits=4, zero_division=0)
+    report = classification_report(
+        y_test,
+        preds,
+        target_names=target_names,
+        digits=4,
+        zero_division=0
+    )
     print(report)
 
     per_lang = {}
@@ -920,16 +990,75 @@ def stage_eval(
     }
 
 
+# ────────────────────────── ONNX 自检辅助 ──────────────────────────
+def _ort_session(path: str, use_basic: bool = True):
+    """创建 ORT session。
+
+    默认 BASIC 优化级别：ORT 的 SkipLayerNormFusion 在 XLM-R 上会产出
+    shape 不匹配的 SkipLayerNormalization 节点，BASIC 级别不触发该融合。
+    """
+    import onnxruntime as ort
+    opts = ort.SessionOptions()
+    opts.graph_optimization_level = (
+        ort.GraphOptimizationLevel.ORT_ENABLE_BASIC if use_basic
+        else ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    )
+    return ort.InferenceSession(
+        path,
+        sess_options=opts,
+        providers=["CPUExecutionProvider"]
+    )
+
+
+def _make_feeds(sess, b: int, max_len: int, input_dim=None, seed: int = 42) -> dict:
+    """按 session 的真实输入名构造确定性输入（同一 seed 保证 FP32/FP16/INT8 可比）。"""
+    rng = np.random.default_rng(seed)
+    feeds = {}
+    for inp in sess.get_inputs():
+        if inp.name == "input_ids":
+            feeds[inp.name] = rng.integers(0, 1000, (b, max_len), dtype=np.int64)
+        elif inp.name == "attention_mask":
+            feeds[inp.name] = np.ones((b, max_len), dtype=np.int64)
+        elif input_dim is not None:
+            feeds[inp.name] = rng.standard_normal((b, input_dim)).astype(np.float32)
+        else:
+            raise ValueError(f"未知 ONNX 输入 '{inp.name}'")
+    return feeds
+
+
+def _onnx_selfcheck(
+    path: str,
+    max_len: int,
+    num_labels: int,
+    input_dim=None,
+    ref=None,
+    tag: str = ""
+):
+    """batch 1/2/8 自检；返回 batch=8 的输出作为对比基准。"""
+    sess = _ort_session(path)
+    ref_out = None
+    for b in [1, 2, 8]:
+        feeds = _make_feeds(sess, b, max_len, input_dim=input_dim)
+        out = sess.run(["logits"], feeds)[0]
+        assert out.shape == (b, num_labels), (tag, b, out.shape)
+        if b == 8:
+            ref_out = out
+    if ref is not None and ref_out is not None:
+        diff = float(np.abs(ref_out - ref).max())
+        print(f"[onnx] {tag} 自检通过（batch 1/2/8）；与 FP32 最大偏差 {diff:.4f}")
+    else:
+        print(f"[onnx] {tag} 自检通过（batch 1/2/8，num_labels={num_labels}）")
+    return ref_out
+
+
 # ────────────────────────── ONNX 导出（整图）──────────────────────────
 def stage_onnx(args, num_labels: Optional[int] = None) -> None:
-    """v2：导出 encoder+head 整图（v1 只导 384->128->18 的分类头）。
-
-    输入：input_ids / attention_mask（动态 batch 与 sequence）
-    输出：logits
+    """导出 encoder+head 整图
     """
     import onnx
-    import onnxruntime as ort
-    from onnxruntime.quantization import quantize_dynamic, QuantType
+    from onnxruntime.quantization import (
+        QuantType, quant_pre_process, quantize_dynamic,
+    )
 
     if num_labels is None:
         with open(Config.LABELMAP_PATH, encoding="utf-8") as f:  # type: ignore
@@ -938,36 +1067,59 @@ def stage_onnx(args, num_labels: Optional[int] = None) -> None:
     ckpt = torch.load(Config.MODEL_PATH, map_location="cpu")  # type: ignore
     state = ckpt.get("state_dict", ckpt)
     max_len = getattr(args, "max_seq_len", Config.MAX_SEQ_LEN)
+    is_e2e = (
+        ckpt.get("train_mode") == "e2e"
+        or any(k.startswith("roberta.") for k in state.keys())
+    )
 
-    if ckpt.get("train_mode") == "e2e":
+    # ── 1) 重建模型（词表对齐与 stage_eval 保持一致）──
+    if is_e2e:
         from transformers import XLMRobertaForSequenceClassification
+        encoder_dir = ckpt.get("encoder_dir") or Config.encoder_dir()
         model = XLMRobertaForSequenceClassification.from_pretrained(
-            ckpt.get("encoder_dir") or Config.encoder_dir(), num_labels=num_labels)
+            encoder_dir,
+            num_labels=num_labels
+        )
+        ckpt_vocab = state["roberta.embeddings.word_embeddings.weight"].shape[0]
+        if ckpt_vocab != model.config.vocab_size:
+            model.resize_token_embeddings(ckpt_vocab, mean_resizing=False)
         model.load_state_dict(state)
         model.eval()
-        dummy_ids = torch.randint(0, 1000, (1, max_len), dtype=torch.long)
+        dummy_ids  = torch.randint(0, 1000, (1, max_len), dtype=torch.long)
         dummy_mask = torch.ones((1, max_len), dtype=torch.long)
         dummy = (dummy_ids, dummy_mask)
-        input_names = ["input_ids", "attention_mask"]
-        dynamic_axes = {"input_ids": {0: "batch", 1: "sequence"},
-                        "attention_mask": {0: "batch", 1: "sequence"},
-                        "logits": {0: "batch"}}
+        input_names  = ["input_ids", "attention_mask"]
+        dynamic_axes = {
+            "input_ids":      {0: "batch", 1: "sequence"},
+            "attention_mask": {0: "batch", 1: "sequence"},
+            "logits":         {0: "batch"},
+        }
+        input_dim = None
     else:
         hidden_dim = ckpt.get("hidden_dim", Config.HIDDEN_DIM)
-        input_dim = ckpt.get("input_dim", Config.INPUT_DIM)
-        model = LightEmotionClassifier(input_dim=input_dim, num_classes=num_labels,
-                                       hidden_dim=hidden_dim, dropout=0.0).eval()
+        input_dim  = ckpt.get("input_dim", Config.INPUT_DIM)
+        model = LightEmotionClassifier(
+            input_dim=input_dim,
+            num_classes=num_labels,
+            hidden_dim=hidden_dim, 
+            dropout=0.0
+        ).eval()
         model.load_state_dict(state)
         dummy = torch.randn(1, input_dim)
-        input_names = ["input"]
-        dynamic_axes = {"input": {0: "batch"}, "logits": {0: "batch"}}
+        input_names  = ["input"]
+        dynamic_axes = {
+            "input": {0: "batch"},
+            "logits": {0: "batch"}
+        }
 
+    # ── 2) FP32 导出：强制 legacy 导出器 ──
     torch.onnx.export(
         model, dummy, Config.ONNX_PATH,  # type: ignore
         input_names=input_names, output_names=["logits"],
         dynamic_axes=dynamic_axes,
-        opset_version=17,  # 18 在部分 runtime 上不支持 LayerNorm 融合
+        opset_version=17,
         do_constant_folding=True,
+        dynamo=False,                # ★ 核心修复：禁用 dynamo 导出器
     )
     try:
         from onnxsim import simplify
@@ -975,61 +1127,87 @@ def stage_onnx(args, num_labels: Optional[int] = None) -> None:
         m, ok = simplify(m)
         if ok:
             onnx.save(m, Config.ONNX_PATH)  # type: ignore
+            print("[onnx] onnxsim 简化成功")
     except Exception as e:
         print(f"[onnx] onnxsim 跳过（{e}）")
     onnx.checker.check_model(onnx.load(Config.ONNX_PATH))  # type: ignore
     print(f"[onnx] FP32 整图已导出 → {Config.ONNX_PATH}")  # type: ignore
 
+    # ── 3) FP32 自检（BASIC 级别，避开 SkipLayerNormFusion）──
+    fp32_ref = _onnx_selfcheck(
+        Config.ONNX_PATH,
+        max_len, num_labels,
+        input_dim=input_dim,
+        tag="FP32"
+    )
+
+    # ── 4) FP16：基于已通过自检的 FP32 图 ──
+    fp16_ok = False
     try:
         from onnxconverter_common import float16
         fp16_model = float16.convert_float_to_float16(
             onnx.load(Config.ONNX_PATH), keep_io_types=True)  # type: ignore
         onnx.save(fp16_model, Config.ONNX_FP16_PATH)  # type: ignore
         print(f"[onnx] FP16 → {Config.ONNX_FP16_PATH}")  # type: ignore
+        _onnx_selfcheck(
+            Config.ONNX_FP16_PATH,
+            max_len,
+            num_labels,
+            input_dim=input_dim,
+            ref=fp32_ref,
+            tag="FP16"
+        )
+        fp16_ok = True
     except Exception as e:
-        print(f"[onnx] FP16 导出跳过（{e}）")
+        print(f"[onnx] FP16 导出/自检跳过（{e}）")
 
+    # ── 5) INT8：先 quant_pre_process，再 quantize_dynamic ──
     quant_ok = False
+    pre_path = Config.ONNX_QUANT_PATH + ".pre.onnx"  # type: ignore
     try:
-        quantize_dynamic(model_input=Config.ONNX_PATH,  # type: ignore
-                         model_output=Config.ONNX_QUANT_PATH,  # type: ignore
-                         weight_type=QuantType.QInt8)
+        quant_pre_process(
+            input_model=Config.ONNX_PATH,  # type: ignore
+            output_model_path=pre_path,
+            skip_symbolic_shape=False,
+        )
+        quantize_dynamic(
+            model_input=pre_path,
+            model_output=Config.ONNX_QUANT_PATH,  # type: ignore
+            weight_type=QuantType.QInt8,
+        )
         quant_ok = os.path.exists(Config.ONNX_QUANT_PATH)  # type: ignore
-        print(f"[onnx] INT8 → {Config.ONNX_QUANT_PATH}")  # type: ignore
+        print(f"[onnx] INT8（已 pre_process）→ {Config.ONNX_QUANT_PATH}")  # type: ignore
     except Exception as e:
-        print(f"[onnx] 量化失败（{e}），将使用 FP32 模型进行推理")
+        print(f"[onnx] INT8 量化失败（{e}）；部署将回退 FP32/FP16")
+    finally:
+        if os.path.exists(pre_path):
+            os.remove(pre_path)
 
-    sess = ort.InferenceSession(Config.ONNX_PATH, providers=["CPUExecutionProvider"])  # type: ignore
-    ref = None
-    for b in [1, 2, 8]:
-        feeds = {}
-        for i in sess.get_inputs():
-            if i.name == "input_ids":
-                feeds[i.name] = np.random.randint(0, 1000, (b, max_len)).astype(np.int64)
-            elif i.name == "attention_mask":
-                feeds[i.name] = np.ones((b, max_len), dtype=np.int64)
-            else:
-                feeds[i.name] = np.random.randn(b, ckpt.get("input_dim", 768)).astype(np.float32)
-        out = sess.run(["logits"], feeds)[0]
-        assert out.shape == (b, num_labels), out.shape
-        if b == 8:
-            ref = out
-    if quant_ok and ref is not None:
-        qsess = ort.InferenceSession(Config.ONNX_QUANT_PATH,  # type: ignore
-                                     providers=["CPUExecutionProvider"])
-        feeds = {}
-        for i in qsess.get_inputs():
-            if i.name == "input_ids":
-                feeds[i.name] = np.random.randint(0, 1000, (8, max_len)).astype(np.int64)
-            elif i.name == "attention_mask":
-                feeds[i.name] = np.ones((8, max_len), dtype=np.int64)
-            else:
-                feeds[i.name] = np.random.randn(8, ckpt.get("input_dim", 768)).astype(np.float32)
-        qout = qsess.run(["logits"], feeds)[0]
-        print(f"[onnx] 自检通过；INT8 与 FP32 最大偏差 "
-              f"{float(np.abs(qout - ref).max()):.4f}")
-    else:
-        print(f"[onnx] 自检通过（batch 1/2/8，num_labels={num_labels}）")
+    if quant_ok:
+        try:
+            _onnx_selfcheck(
+                Config.ONNX_QUANT_PATH,
+                max_len,
+                num_labels,
+                input_dim=input_dim,
+                ref=fp32_ref,
+                tag="INT8"
+            )
+        except Exception as e:
+            print(f"[onnx] INT8 自检失败（{e}）→ 删除 INT8 产物（避免 stage_infer 误用）")
+            try:
+                os.remove(Config.ONNX_QUANT_PATH)  # type: ignore
+            except OSError:
+                pass
+            quant_ok = False
+
+    # ── 6) 汇总 ──
+    artifacts = ["FP32"]
+    if fp16_ok:
+        artifacts.append("FP16")
+    if quant_ok:
+        artifacts.append("INT8")
+    print(f"[onnx] 自检完成；可用产物: {' / '.join(artifacts)}")
 
 
 # ────────────────────────── 推理 ──────────────────────────
@@ -1044,16 +1222,24 @@ def stage_infer(args, texts: Optional[List[str]] = None) -> None:
     with open(Config.LABELMAP_PATH, encoding="utf-8") as f:  # type: ignore
         id2label = {int(k): v for k, v in json.load(f)["id2label"].items()}
 
-    onnx_path = Config.ONNX_QUANT_PATH if os.path.exists(  # type: ignore
-        Config.ONNX_QUANT_PATH) else Config.ONNX_PATH  # type: ignore
-    sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])  # type: ignore
+    onnx_path = Config.ONNX_QUANT_PATH if os.path.exists(Config.ONNX_QUANT_PATH) else Config.ONNX_PATH  # type: ignore
+    # ★ 与 stage_onnx 自检保持一致：BASIC 优化级别，避免 fusion bug
+    sess = _ort_session(onnx_path)
     names = [i.name for i in sess.get_inputs()]
 
-    if "input_ids" in names:      # 整图
-        tokenizer = load_tokenizer(Config.MODEL_NAME)
+    if "input_ids" in names:      # encoder+head 整图
+        # tokenizer 从 ckpt.encoder_dir 加载，避免词表回退到 hub
+        ckpt = torch.load(Config.MODEL_PATH, map_location="cpu")
+        enc_dir = ckpt.get("encoder_dir") or Config.MODEL_NAME
+        tokenizer = load_tokenizer(enc_dir)
         max_len = getattr(args, "max_seq_len", Config.MAX_SEQ_LEN)
-        enc = tokenizer(texts, padding=True, truncation=True, max_length=max_len,
-                        return_tensors="np")
+        enc = tokenizer(
+            texts,
+            padding="max_length",
+            truncation=True,
+            max_length=max_len,
+            return_tensors="np"
+        )
         feeds = {}
         for i in sess.get_inputs():
             if i.name in enc:
@@ -1061,9 +1247,11 @@ def stage_infer(args, texts: Optional[List[str]] = None) -> None:
             else:
                 feeds[i.name] = np.zeros_like(enc["input_ids"]).astype(np.int64)
         logits = sess.run(["logits"], feeds)[0]
-    else:                          # 仅分类头（旧产物）
-        encoder = _load_onnx_encoder(Config.onnx_encoder_cache(),
-                                     Config.tokenizer_dir_for_train())
+    else: 
+        encoder = _load_onnx_encoder(
+            Config.onnx_encoder_cache(),
+            Config.tokenizer_dir_for_train()
+        )
         embs = encoder.encode(texts, normalize=False)
         logits = sess.run(["logits"], {"input": embs})[0]
 
@@ -1078,8 +1266,13 @@ def stage_infer(args, texts: Optional[List[str]] = None) -> None:
         print(f"[infer] 「{t}」 → {res}")
 
 
-def cross_validate(args, emb: dict, num_labels: int, folds: int = 5,
-                   split: Optional[dict] = None) -> None:
+def cross_validate(
+    args,
+    emb: dict,
+    num_labels: int,
+    folds: int = 5,
+    split: Optional[dict] = None
+) -> None:
     """小数据集上的可靠评估：固定测试集 + 训练集 K 折，报告均值±标准差。"""
     from sklearn.model_selection import StratifiedKFold
 
@@ -1090,9 +1283,11 @@ def cross_validate(args, emb: dict, num_labels: int, folds: int = 5,
         scores = []
         for k, (a, b) in enumerate(skf.split(tr, tr["label_id"]), 1):
             print(f"\n[cv] fold {k}/{folds}")
-            fold_split = {"train": tr.iloc[a].reset_index(drop=True),
-                          "val": tr.iloc[b].reset_index(drop=True),
-                          "test": test_df}
+            fold_split = {
+                "train": tr.iloc[a].reset_index(drop=True),
+                "val": tr.iloc[b].reset_index(drop=True),
+                "test": test_df
+            }
             stage_train_e2e(args, fold_split, num_labels)
             res = stage_eval(args, None, split["id2label"], fold_split)
             scores.append(res["macro_f1"])
@@ -1104,9 +1299,14 @@ def cross_validate(args, emb: dict, num_labels: int, folds: int = 5,
     skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=Config.RANDOM_STATE)
     scores = []
     for k, (tr, va) in enumerate(skf.split(X, y), 1):
-        fold_emb = {"X_train": X[tr], "y_train": y[tr],
-                    "X_val": X[va], "y_val": y[va],
-                    "X_test": emb["X_test"], "y_test": emb["y_test"]}
+        fold_emb = {
+            "X_train": X[tr],
+            "y_train": y[tr],
+            "X_val": X[va],
+            "y_val": y[va],
+            "X_test": emb["X_test"],
+            "y_test": emb["y_test"]
+        }
         print(f"\n[cv] fold {k}/{folds}")
         stage_train(args, fold_emb, num_labels)
         scores.append(stage_eval(args, fold_emb)["macro_f1"])
