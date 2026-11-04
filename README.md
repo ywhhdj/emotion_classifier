@@ -157,7 +157,7 @@ emotion-classify --max-seq-len 64 --lang-token
 ```
 
 #### CLI 输出示例
-```json
+```bash
 $ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --top-k 3
 「底下头，脸颊泛红，偷偷瞄了你一眼」
   #1 害羞     96.34%  ███████████████████
