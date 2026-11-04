@@ -2,417 +2,322 @@
 
 多语言轻量情感分类模型包，支持 **18 种情感标签**，覆盖 **中文 / 英文 / 日文**。
 
-- **v2.0**：编码器由 `paraphrase-multilingual-MiniLM-L12-v2`（语义相似度句向量）换为 **`xlm-roberta-base`**，支持 **LoRA 端到端微调**；
-- 轻量化：三语词表裁剪（250k → 32k~48k）+ TextPruner 编码器剪枝 + FP16/INT8，交付 **158 MB(fp16) / 79 MB(int8)**；
-- 推理内核为 **Rust**（分词 / 批调度 / 前向 / 后处理），`src/` 对外仍是 **Python 胶水层**，API 与 v1 完全兼容。
-
-> v1 的病因：MiniLM 是**语义相似度**模型，句向量会主动抹掉与"同义"无关的信息，
-> 而这恰恰是情感分类最需要的（程度副词、否定、情绪词的细微差别）。
-> README 里自述的两个症状（多语言准确率 <70%、"I happily lowered my head" 判成害羞）都源于此。
+- **推理内核是 Rust**：分词 / 动态 padding / 批调度 / 前向 / 后处理都在 `rust/` 完成，通过 PyO3 暴露；`src/` 是 Python 对外 API（胶水层）。
+- **三档 ONNX 整图**，文件名固定，统一从 GitHub Release `v0.2.0` 下载：
+  `emotion_classifier.onnx` / `emotion_classifier_fp16.onnx` / `emotion_classifier_int8.onnx`。
+- **进程内单一实例**：无论创建多少个 `EmotionClassifier`，模型只初始化一次；也支持把**已加载的模型**交给库、由程序管理生命周期。
 
 ---
 
 ## 1. 安装
 
-### 仅推理
-
 ```bash
-pip install .                      # 含 Rust 内核（需要 Rust 工具链）
-EMOTION_BACKEND=onnx pip install .  # 纯 Python 回退（无 Rust 工具链时）
+# 含 Rust 内核（需要 Rust 工具链；默认启用 backend-ort）
+pip install .
+
+# 纯 Python 回退（无 Rust 工具链）
+EMOTION_BACKEND=onnx pip install .
+
+# 训练侧额外依赖
+pip install ".[train]"
 ```
-
-### 训练
-
-```bash
-pip install ".[train]"        # torch + transformers + peft
-pip install ".[full]"         # + 剪枝(textpruner) + 回译(sentencepiece) + v1 兼容
-```
-
-> **Python 版本**：`>= 3.10`（代码使用 PEP 604 的 `str | Path` 与内置泛型）。
 
 ---
 
-## 2. 快速开始（API 与 v1 完全一致）
+## 2. 快速开始
 
 ```python
-from emotion_classifier import EmotionClassifier
+from src import EmotionClassifier            # 安装后：from emotion_classifier import EmotionClassifier
 
-clf = EmotionClassifier(auto_download=True)
-
-# 单条预测
+clf = EmotionClassifier(auto_download=True)  # 缺文件时从 Release 下载
 print(clf.predict("脸颊泛红，偷偷瞄了你一眼", top_k=3))
 # [[('害羞', 0.93), ('疑惑', 0.04), ('难为情', 0.02)]]
 
-# 批量
-texts = ["i'm so excited i can hardly breathe",
-         "怖くて震えが止まらない",
-         "气鼓鼓地跺着脚瞪着你"]
-for text, preds in zip(texts, clf.predict(texts, top_k=2)):
-    print(text, "→", preds)
-
-# 只要最可能的 1 个标签
+print(clf.predict(["i'm so excited", "怖くて震えが止まらない"], top_k=2))
 print(clf.predict_label("今天的天气真好"))
-
-# 概率矩阵（评估 / 阈值调优）
-probs = clf.predict_proba(texts)          # (N, 18)
-
-# 指定语言（不传则自动检测）
-clf.predict("今日はとても嬉しいです", lang="ja")
-
+print(clf.predict_proba(["a", "b"]).shape)   # (2, 18)
+print(clf.predict("今日はとても嬉しいです", lang="ja"))
 print(clf.get_labels())
 ```
 
-从源码仓库直接使用（未安装时）：
+### 指定精度档位
 
 ```python
-import sys; sys.path.insert(0, "/path/to/emotion_classifier")
-from src import EmotionClassifier
+clf = EmotionClassifier(auto_download=True, precision="int8")   # fp32（默认）/ fp16 / int8
+clf.model_info()["precision"]                                   # -> "int8"
 ```
 
-### 构造参数（新增项标 ★）
+### 传入已加载模型（模型交给程序管理）
+
+```python
+import onnxruntime as ort
+from src import EmotionClassifier, LoadedModel, release_model
+
+sess = ort.InferenceSession(
+  "models/deploy/emotion_classifier_int8.onnx",
+    providers=["CPUExecutionProvider"]
+)
+
+# 方式 A：完整 bundle（自带 tokenizer / label_map，可完全离线）
+clf = EmotionClassifier(model=LoadedModel(
+  session=sess,
+  tokenizer="models/deploy/tokenizer",
+  label_map=None,          # 不传则从 model_dir 读 label_map.json
+  precision="int8",
+  backend="onnx",
+  owns=False,              # 生命周期归调用方，库不会擅自 close
+))
+
+# 方式 B：直接传 session
+clf = EmotionClassifier(
+  model=sess,
+  precision="int8",
+  tokenizer="models/tokenizer"
+)
+
+# 方式 C：传 ONNX 字节或本地路径（库创建 session，release_model() 可回收）
+clf = EmotionClassifier(
+  model=open("emotion_classifier_fp16.onnx", "rb").read(),
+  precision="fp16"
+)
+clf = EmotionClassifier(model_path="/path/to/emotion_classifier.onnx")
+
+# Rust 内核句柄同样可以注入
+from src import _core  # 仅在已编译内核的 wheel 中可用
+engine = _core.EmotionEngine(model_dir="models/deploy", precision="int8")
+clf = EmotionClassifier(model=engine, precision="int8")
+```
+
+`model` 支持：`LoadedModel` / `onnxruntime.InferenceSession` / `_core.EmotionEngine` / ONNX 字节 / `.onnx` 路径。
+
+> 注入 ONNX 字节 / 路径时，库仍需取得分词器（部署目录或 `tokenizer=` 入参）；要完全离线且自带分词器，优先注入 `LoadedModel`。
+
+### 单一实例规则（重要）
+
+| 场景 | 行为 |
+|---|---|
+| 两个 `EmotionClassifier()` 用相同配置 | 复用同一份模型，**不重复初始化** |
+| 配置不同（目录 / 档位 / 线程 / `max_seq_len` 等） | 抛 `BackendError`，不会静默再加载一份 |
+| 已注入外部模型，又想从 Release 加载 | 先 `release_model()` 或传 `replace=True` |
+| `clf.close()` / `with` 退出 | 只解除本对象引用，**不销毁共享实例** |
+| `EmotionClassifier.release_shared_model()` / `release_model()` | 显式释放唯一实例（含 Rust 全局引擎） |
+| `owns=False` 的注入资源 | 库绝不主动 `close()`；由程序决定何时释放 |
+
+```python
+from src import EmotionClassifier, release_model
+
+a = EmotionClassifier(auto_download=True)
+b = EmotionClassifier(auto_download=True)   # 复用 a 的引擎
+assert a.model_info()["singleton"] is True
+
+release_model()                              # 换档 / 热更新的出口
+c = EmotionClassifier(auto_download=True, precision="fp16")
+```
+
+### 构造参数
 
 | 参数 | 默认 | 说明 |
-|------|------|------|
-| `model_dir` | `~/.emotion_classifier/models` | 模型目录；环境变量 `EMOTION_MODEL_DIR` |
-| `backend` | `"auto"` | `auto` / `rust` ★ / `onnx` / `pytorch` |
-| `auto_download` | `False` | 缺失模型时是否自动下载 |
-| `device` | 自动探测 | `cpu` / `cuda` |
-| `tokenizer_dir` | `<model_dir>/tokenizer` | 本地 tokenizer 目录 |
-| `encoder_path` | `None` | 自定义编码器（仅旧两段式产物需要） |
-| `encoder_cache_size` | `0` | 向量缓存条数；交互场景建议 1024 |
-| `num_threads` ★ | `4` | Rust 内核线程数 |
-| `max_batch` ★ | `32` | 内核批调度上限 |
-| `use_lang_token` ★ | `True` | 输入前拼 `<zh>/<en>/<ja>` |
+|---|---|---|
+| `model_dir` | `~/.emotion_classifier/models` | 部署目录；环境变量 `EMOTION_MODEL_DIR` |
+| `backend` | `"auto"` | `auto`（Rust→ONNX→PyTorch）/ `rust` / `onnx` / `pytorch` |
+| `precision` | `"auto"` | `auto` / `fp32` / `fp16` / `int8`，对应三档 ONNX |
+| `model` / `model_path` | `None` | 注入已加载模型（见上） |
+| `owns_model` | `False` | 注入资源是否由库负责释放 |
+| `tokenizer` / `label_map` / `calib` | `None` | 注入配套资源，离线场景可完全不落盘 |
+| `auto_download` | `False` | 缺失资产时从 Release 下载 |
+| `repo_url` | Release `v0.2.0` | 自定义 Release / 镜像地址 |
+| `use_lang_token` | `None` | 显式 `True/False` > `deploy_manifest.json` > 训练默认 `False` |
+| `max_seq_len` | `None` | 同上，默认 `64`（与 `train/config.py` 一致） |
+| `num_threads` / `max_batch` | `4` / `32` | Rust 内核线程数与批上限 |
+| `device` | 自动 | `cpu` / `cuda` |
+| `tokenizer_dir` / `encoder_path` / `encoder_cache_size` | — | 旧两段式产物兼容项 |
+| `replace` | `False` | 允许先释放旧单例再登记新模型 |
 
-### 上下文管理器
-
-```python
-with EmotionClassifier() as clf:
-    results = clf.predict(["text1", "text2"], top_k=5)
-```
+对外方法保持不变：`predict` / `predict_batch` / `predict_proba` / `predict_label` / `get_labels` / `model_info` / `update_models` / `close` / 上下文管理器 / `__call__`。
 
 ### 18 种情感标签
 
-| 序号 | 标签 | 说明 | 序号 | 标签 | 说明 |
-|:--:|------|------|:--:|------|------|
-| 1 | 高兴 | 开心、喜悦、激动 | 10 | 担心 | 焦虑、不安 |
-| 2 | 厌恶 | 反感、恶心 | 11 | 无奈 | 无力、放弃 |
-| 3 | 哭泣 | 悲伤哭泣 | 12 | 生气 | 愤怒、恼火 |
-| 4 | 害怕 | 恐惧、惊慌 | 13 | 疑惑 | 困惑、不解 |
-| 5 | 害羞 | 羞涩、脸红 | 14 | 紧张 | 局促、不安 |
-| 6 | 平静 | 冷静、安宁 | 15 | 自信 | 确信、从容 |
-| 7 | 心动 | 浪漫、喜欢 | 16 | 认真 | 专注、严肃 |
-| 8 | 惊讶 | 吃惊、意外 | 17 | 调皮 | 顽皮、戏弄 |
-| 9 | 慌张 | 慌乱、手忙脚乱 | 18 | 难为情 | 尴尬、羞耻 |
-
-> 标签 ID 由 `LabelEncoder` 按**字典序**生成（`label_map.json` 中依次为 厌恶、哭泣、害怕、害羞、平静、心动、惊讶、慌张、担心、无奈、生气、疑惑、紧张、自信、认真、调皮、难为情、高兴）。**以训练产出的 `label_map.json` 为准**，不要硬编码 ID。
+高兴、厌恶、哭泣、害怕、害羞、平静、心动、惊讶、慌张、担心、无奈、生气、疑惑、紧张、自信、认真、调皮、难为情。
+标签 ID 由 `LabelEncoder` 按字典序固化在 `label_map.json`，**以部署目录中的文件为准**。
 
 ---
 
-## 3. 命令行用法
+## 3. 命令行
 
 ```bash
 emotion-classify "脸颊泛红，偷偷瞄了你一眼"
-emotion-classify "气鼓鼓地跺着脚瞪着你" --top-k 5
-emotion-classify --batch "text1" "text2"
-emotion-classify --file input.txt
-emotion-classify "今天的天气真好" --json
+emotion-classify "test" --precision int8        # 指定档位
+emotion-classify "test" --model ./models/deploy/emotion_classifier_fp16.onnx
+emotion-classify --batch "text1" "text2" --top-k 5 --json
+emotion-classify --file input.txt --backend onnx
 emotion-classify --interactive --cache 1024
-
-emotion-classify "test" --backend rust        # 强制 Rust 内核
-emotion-classify "test" --model-dir /path/to/models
-emotion-classify "test" --no-download
-
-# 运维
-emotion-classify --labels
-emotion-classify --info          # 后端 / 编码器 / 整图标志 / 是否校准
-emotion-classify --list-models
-emotion-classify --update
+emotion-classify --labels / --info / --list-models / --update
+emotion-classify --no-download                 # 纯离线
+emotion-classify --max-seq-len 64 --lang-token
 ```
 
+#### CLI 输出示例
+```json
+$ emotion-classify "底下头，脸颊泛红，偷偷瞄了你一眼" --top-k 3
+「底下头，脸颊泛红，偷偷瞄了你一眼」
+  #1 害羞     96.34%  ███████████████████
+  #2 厌恶     0.74%  
+  #3 担心     0.72%  
+
+$ emotion-classify "私は嬉しくてうなだれた"
+「私は嬉しくてうなだれた」
+  #1 高兴     97.65%  ███████████████████
+  #2 自信     1.49%  
+  #3 心动     0.23%
+
+#明显的不足
+$ emotion-classify "今天的天气真好" --json
+[
+  {
+    "text": "今天的天气真好",
+    "predictions": [
+      {
+        "label": "生气",
+        "score": 0.2855
+      },
+      {
+        "label": "高兴",
+        "score": 0.1672
+      },
+      {
+        "label": "自信",
+        "score": 0.1033
+      }
+    ]
+  }
+]
+```
 ---
 
-## 4. 训练自己的模型
+## 4. Release 资产与部署目录
 
-### 数据格式
+`auto_download=True` 时下载的最小集合：
 
-CSV，至少包含 `text` 与 `label` 两列；可选 `lang` 列（用于语言过滤与分层）。
-
-```csv
-text,label,lang
-今天心情真好,高兴,zh
-i'm so excited i can hardly breathe,高兴,en
-怖くて震えが止まらない,害怕,ja
-```
-
-当前 `data/emotion.csv`：2556 行，zh 1863 / en 356 / ja 337，**en、ja 每类仅 16~36 条** —— 这是精度的主要瓶颈。
-
-### 两条训练路径
-
-| 路径 | 命令 | 说明 |
+| 资产 | 说明 | 必需 |
 |---|---|---|
-| **A：LoRA 端到端（推荐）** | `--train-mode e2e` | XLM-R + LoRA(r=8，后 4 层)，文本级训练 |
-| **B：冻结编码器 + prompt 完形** | `--train-mode cached --use-prompt` | 编码器冻结，只训分类头；复用预编码缓存，1 小时内出数 |
+| `emotion_classifier.onnx` | FP32 整图（默认档） | ✅（三档至少有其一） |
+| `emotion_classifier_fp16.onnx` | FP16 整图 | 可选 |
+| `emotion_classifier_int8.onnx` | INT8 动态量化 | 可选 |
+| `label_map.json` | 18 标签映射 | ✅ |
+| `tokenizer.zip` | HF tokenizer，解压到 `<model_dir>/tokenizer/` | ✅（本地无 tokenizer 时） |
+| `deploy_manifest.json` | 训练参数 / 图签名 | 可选（缺失回退训练默认） |
+| `checksums.json` | SHA256，下载后逐项校验 | 可选 |
+| `calib.json` | 温度 / per-class 阈值 | 可选 |
 
-**先跑 B（成本极低，作为换基座的 sanity check），再跑 A；两者 CV 差距 <1.5 pt 说明瓶颈在数据，算力应投到回译与跨语言扩充。**
 
-```bash
-# 路径 B：XLM-R 冻结 + prompt 完形（先出数）
-python main.py --train-mode cached --use-prompt \
-  --hidden-dim 256 --dropout 0.4 --lr 2e-3 \
-  --class-weight effective --focal-gamma 2.0 --metric macro_f1
-
-# 路径 A：XLM-R + LoRA 端到端
-python main.py --train-mode e2e \
-  --lora-r 8 --lora-unfreeze-from 8 --lr 1e-4 \
-  --epochs 20 --early-stop 6 --batch-size 32 \
-  --max-seq-len 48 --metric macro_f1
-
-# 回译 + 跨语言扩充（en/ja 数据太少的解法）
-python main.py --train-mode e2e --use-bt --bt-factor 1 --cross-lingual
-
-# 5 折交叉验证（小数据集必须用）
-python main.py --train-mode e2e --folds 5 --stratify-lang
-```
-
-### 关键参数
-
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| `--train-mode` | `e2e` | `e2e` / `cached` |
-| `--model-name` | `xlm-roberta-base` | 编码器基座 |
-| `--lora-r` | `8` | LoRA rank |
-| `--lora-unfreeze-from` | `8` | 从第几层开始挂 LoRA（前层冻结） |
-| `--max-seq-len` | `48` | 数据 max=45 字符，48 足够 |
-| `--use-lang-token` | `True` | 输入前加 `<zh>/<en>/<ja>` |
-| `--use-prompt` | `False` | prompt 完形（仅 cached 模式） |
-| `--use-bt` | `False` | 回译增强（NLLB-200） |
-| `--bt-factor` | `1` | 每条产出的回译样本数 |
-| `--cross-lingual` | `False` | 跨语言扩充（zh/en → ja/en） |
-| `--folds` | `0` | 交叉验证折数 |
-| `--stratify-lang` | `False` | 按 `标签×语言` 分层划分 |
-| `--calibrate` | `True` | 温度标定 |
-| `--lang` | 空 | 只保留指定语言，如 `zh,en` |
-| `--hidden-dim` / `--dropout` / `--lr` / `--epochs` / `--early-stop` | 见 `--help` | 沿用 v1 |
-| `--class-weight` / `--focal-gamma` / `--label-smoothing` / `--mixup-alpha` | 沿用 v1 | 沿用 v1 |
-| `--chunk-size` / `--chunk-overlap` | - | **[DEPRECATED]** 长文本分块，v2 不再需要 |
-
----
-
-## 5. 轻量化流水线
-
-顺序不可颠倒：
-
-```
-词表三语裁剪 → DAPT(MLM) → 微调 → LoRA merge → 剪枝 → 蒸馏恢复 → 校准 → 导出
-```
-
-```bash
-# 1) 构建三语语料 + 裁剪词表（250k → 40k）
-python scripts/vocab/build_corpus.py --data data/emotion.csv --out data/corpus/zh_en_ja.txt
-python scripts/vocab/trim_vocab.py --mode intersect --target-vocab 40000 \
-    --corpus data/corpus/zh_en_ja.txt --out models/xlmr-zh-en-ja
-python scripts/vocab/check_vocab.py --model-dir models/xlmr-zh-en-ja     # CI 必跑
-
-# 2) 剪枝（8 头 / FFN 1536）+ 蒸馏恢复
-python scripts/prune/prune_encoder.py --model-dir model/best \
-    --configs configs/gc.json configs/tc.json --out model/pruned
-python scripts/prune/prune_encoder.py --distill --model-dir model/pruned \
-    --teacher model/best --out model/distilled
-
-# 3) 校准 + 整图导出 + 压测
-python scripts/calibrate/calibrate.py --model-dir model/distilled --out model/calib.json
-
-# 组装自包含部署目录（src 与 Rust 只认这个）
-python scripts/export/package_deploy.py --model-dir model/distilled --out models/deploy
-
-python scripts/bench/bench.py --model-dir models/deploy --backend rust -n 10000
-```
-
-### 档位
-
-| 配置 | vocab | heads | FFN | 总参数 | fp16 | int8 |
-|---|---|---|---|---|---|---|
-| XLM-R 基线 | 250002 | 12 | 3072 | 278.0 M | 556 MB | 278 MB |
-| **A（推荐）** | 40000 | 8 | 1536 | **78.9 M** | **158 MB** | **79 MB** |
-| B（激进） | 32000 | 8 | 1024 | 63.4 M | 127 MB | 63 MB |
-| C（保守） | 48000 | 10 | 2048 | 99.3 M | 199 MB | 99 MB |
-
-掉点 > 2 pt 就从 A 回退到 C。
-
----
-
-## 6. 两类模型目录（**不要混用**）
-
-| | 训练侧 | 部署侧 |
-|---|---|---|
-| **目录** | `models/xlmr-zh-en-ja/`、`model/best/`、`model/pruned/` | `models/deploy/` |
-| **格式** | HuggingFace 目录（`config.json` + `model.safetensors` + `sentencepiece.bpe.model`） | 自包含产物（ONNX 整图 + tokenizer + `label_map.json` + `calib.json`） |
-| **谁用** | 只有 `train/` | `src/` 与 Rust 内核**只认这个** |
-| **怎么来** | `trim_vocab.py` → 微调 → `prune_encoder.py` | `scripts/export/package_deploy.py` |
-
-> ONNX 是**导出后的产物**，不是训练输入。训练必须从 HF 权重目录 `from_pretrained`；
-> 反过来，`src/` 推理包不认识训练目录，只加载部署目录。
-
-```bash
-# 训练侧：三语裁剪基座（HF 格式）
-python scripts/vocab/trim_vocab.py --mode intersect --target-vocab 40000 \
-    --corpus data/corpus/zh_en_ja.txt --out models/xlmr-zh-en-ja
-
-# 训练（自动识别：本地裁剪产物优先，缺失才回退 hub 下载原始 XLM-R）
-python main.py --train-mode e2e --base-model-dir models/xlmr-zh-en-ja
-
-# 部署侧：组装自包含目录
-python scripts/export/package_deploy.py \
-    --model-dir model/pruned --out models/deploy
-
-# 推理：只认部署目录
-EMOTION_MODEL_DIR=models/deploy emotion-classify "今天心情真好"
-```
-
-`models/deploy/` 产物树：
+部署目录（下载后）：
 
 ```text
-models/deploy/
-├── config.json                    # XLM-R 结构（candle 后端用）
-├── model.safetensors              # 权重（candle 后端用）
-├── emotion_classifier.onnx        # 整图 FP32
+<model_dir>/
+├── emotion_classifier.onnx
 ├── emotion_classifier_fp16.onnx
 ├── emotion_classifier_int8.onnx
-├── sentencepiece.bpe.model        # Rust tokenizer 直接在根目录找
-├── tokenizer/                     # HF tokenizer（Python 回退路径用）
+├── tokenizer/                    # 由 tokenizer.zip
 ├── label_map.json
 ├── calib.json
-└── deploy_manifest.json           # 来源 / vocab / 量化 / 校验和
+├── deploy_manifest.json
+└── checksums.json
 ```
 
-**推理侧绝不联网**：`src/` 只在部署目录里找 tokenizer，找不到就报错提示跑
-`package_deploy.py`，不会静默回退到 hub 下载。
+**推理侧绝不联网拉 hub**：tokenizer 只从部署目录读，缺失就报错并提示下载 Release 资产。
 
-### import 方式
+---
 
-```python
-from emotion_classifier import EmotionClassifier   # 安装后推荐
-from src import EmotionClassifier                  # 仓库内开发等价
+## 5. 与训练 `train/` 的对齐点
+
+| 项 | 训练侧 | 推理侧（v0.2.0） |
+|---|---|---|
+| 基座 | `xlm-roberta-base`（768 维） | 整图 ONNX，输入 `input_ids` / `attention_mask`，输出 `logits` |
+| 导出 | `stage_onnx`，opset 17，动态 batch/sequence | Rust `OrtBackend` / Python ORT 直接加载 |
+| `MAX_SEQ_LEN` | `train/config.py: 64` | `ModelConfig.MAX_SEQ_LEN = 64`（manifest 可覆盖） |
+| `USE_LANG_TOKEN` | 默认 `False` | 默认 `False`（manifest / 显式参数可覆盖） |
+| padding | `make_collate` 按 batch 内最长动态 pad | `Tokenizer` 返回实际长度，`Engine::pad_batch` 动态 pad |
+| ORT 优化级别 | `_ort_session` 用 `ORT_ENABLE_BASIC`（避开 SkipLayerNormFusion） | Rust `Level1`、Python `ORT_ENABLE_BASIC`；`EMO_ORT_OPT_LEVEL=all` 可覆盖 |
+| `position_ids` | HF `create_position_ids_from_input_ids`（pad+1 起算） | `emotion-runtime::create_position_ids`（candle 后端） |
+| 校准 | `stage_calibrate` → `calib.json` | Python / Rust 双双读取温度缩放 |
+
+三档回退优先级仅用于 `precision="auto"`（`fp32 → fp16 → int8`）；显式指定档位时严格按该档文件名下载/加载，缺档就提示 `auto_download=True` 补齐，不再静默回退到本地已有的其它档位。
+
+---
+
+## 6. 训练自己的模型
+
+数据为 CSV（`text,label,lang`），当前 `data/emotion.csv` 共 2556 行（zh 1863 / en 356 / ja 337）。
+
+```bash
+python main.py --train-mode e2e --use-lang-token False --max-seq-len 64
+python main.py --stage onnx            # 产出三档 ONNX + calib.json
+python scripts/export/package_deploy.py --onnx-dir model --out models/deploy
 ```
+
+训练细节（LoRA、回译、跨语言扩充、词表裁剪、剪枝蒸馏、实验矩阵）见 `docs/改造设计_v2.md` 与 `docs/MIGRATION_v1_to_v2.md`。ONNX 是**导出产物**，不是训练输入；训练必须从 HF 权重目录 `from_pretrained`。
 
 ---
 
 ## 7. 项目结构
 
 ```text
-emotion_classifier/
-├── src/                          # 推理包（安装后名为 emotion_classifier；纯 Python 胶水层）
-│   ├── models/
-│   │   ├── config.py             # 模型仓库、校验和、标签/校准文件路径解析
-│   │   ├── encoder.py            # ONNX / Rust 编码器（EXPECTED_DIM=768）
-│   │   └── pytorch.py            # PyTorch 分类头
-│   ├── __init__.py  cli.py  downloader.py  predictor.py
-│   ├── runtime.py                # Rust 引擎单例与后端选择 ★
-│   ├── languages.py  threshold.py  exceptions.py  legacy.py ★
-│   └── data/label_map.json
-├── train/
-│   ├── config.py                 # MODEL_NAME=xlm-roberta-base, INPUT_DIM=768 ★
-│   ├── models.py                 # + build_encoder_lora / PromptMaskEncoder / TextClassificationDataset ★
-│   ├── train.py                  # + stage_train_e2e / stage_calibrate / 整图导出 ★
-│   ├── augment.py                # EDA 按语言降级（中日文不再被破坏）★
-│   ├── backtranslate.py ★         # 回译增强（NLLB-200）
-│   ├── crosslingual.py ★          # 跨语言扩充（zh/en → ja/en）
-│   ├── cli.py  utils.py
-├── rust/                         # 内核（PyO3 → src._core）★
-│   └── crates/{emotion-core,emotion-tokenizer,emotion-runtime,
-│               emotion-postprocess,emotion-python,emotion-cli}
-├── scripts/                      # vocab/ prune/ calibrate/ export/ bench/ ci ★
-├── configs/                      # gc.json / tc.json / vc.json ★
-├── scripts/
-│   ├── vocab/    trim_vocab.py  check_vocab.py  build_corpus.py
-│   ├── prune/    prune_encoder.py（剪枝 + 蒸馏）
-│   ├── export/   export_onnx.py  package_deploy.py ★
-│   └── calibrate/ bench/ ci/
-├── emotion_classifier/           # 安装后的对外包名（src 的薄别名）★
+src/                         # Python 对外 API
+├── predictor.py             # EmotionClassifier（注入 / 单例 / 三档选择）
+├── runtime.py               # 进程内唯一实例 + 外部模型登记
+├── downloader.py            # Release 资产下载（断点续传 / zip / 校验）
 ├── models/
-│   ├── xlmr-zh-en-ja/            # 训练基座（HF，三语裁剪）
-│   └── deploy/                   # 部署产物（自包含）
-├── model/                        # 训练产物中转（.pt / best / pruned）
-├── tests/  data/  docs/  main.py  setup.py  pyproject.toml
+│   ├── config.py            # 版本、三档文件名、部署清单、参数默认值
+│   ├── loaded.py            # LoadedModel（已加载模型容器）
+│   └── encoder.py / pytorch.py
+├── languages.py / threshold.py / exceptions.py / legacy.py / cli.py
+└── data/label_map.json
+emotion_classifier/           # 安装后的对外包名（src 的薄别名）
+native/crates/
+├── emotion-core             # 类型、三档常量、单例配置指纹
+├── emotion-tokenizer        # SentencePiece + 训练侧清洗 + 动态长度
+├── emotion-runtime          # 全局单一引擎、ort/candle 后端、批调度
+├── emotion-postprocess      # softmax / 温度 / top-k
+├── emotion-python           # PyO3 → src._core
+└── emotion-cli              # check / bench / run
+train/                       # 训练与 ONNX 导出
 ```
 
 ---
 
-## 8. 模型文件
-
-| 文件 | 说明 |
-|------|------|
-| `emotion_classifier.onnx` | **整图 FP32**（encoder+head；推荐部署用） |
-| `emotion_classifier_fp16.onnx` | 整图 FP16（体积减半；CPU 上回退为 FP32 计算） |
-| `emotion_classifier_int8.onnx` | 整图 INT8 动态量化 |
-| `calib.json` | 温度 + per-class 阈值（可选） |
-| `label_map.json` | 标签映射 |
-| `tokenizer/` | XLM-R tokenizer（含 `sentencepiece.bpe.model`） |
-
-加载优先级：`emotion_classifier.onnx` → `*_fp16.onnx` → `*_int8.onnx` → 其他。
+1. **en / ja 数据稀疏**：每类 16~36 条，精度瓶颈在数据，解法是回译与跨语言扩充。
+2. **FP16 在 CPU 上不加速**：ORT CPU 会回退 FP32 计算，收益主要是体积。
+3. **INT8 掉点**：量化后必须重跑三语评测，掉点 > 0.5 pt 就退回 FP16。
+4. **candle 后端是可选档**：Release 只发 ONNX；要用纯 Rust 前向需额外提供 `model.safetensors` 并显式 `--backend candle`。
+5. **`transformers` 仅在 Python ONNX 回退路径需要**：Rust 内核路径不导入它，也不联网。
 
 ---
 
-## 9. 已知限制
-
-1. **en / ja 数据稀疏**：每类仅 16~36 条，任何模型都难学出判别边界。解法是回译（`--use-bt`）与跨语言扩充（`--cross-lingual`），而不是继续调模型。
-2. **FP16 在 CPU 上不加速**：ONNXRuntime CPU 会把 FP16 回退为 FP32 计算，收益只在体积；真正加速靠 Rust 内核（candle）或 GPU EP。
-3. **INT8 掉点**：embedding 量化是中日语掉点的主要来源，量化后必须重跑三语评测，掉点 > 0.5 pt 就退回 FP16。
-4. **回译依赖 NLLB-200**：首次运行需下载 `facebook/nllb-200-distilled-600M`（约 2.4 GB），结果缓存到 `data/bt_cache.jsonl`，只跑一次。
-5. **Rust 内核未编译时**：设置 `EMOTION_BACKEND=onnx` 回退到 ONNX Runtime，API 完全一致。
-
----
-
-## 10. 集成示例
-
-### LangChain Tool
-
-```python
-from langchain.tools import BaseTool
-from emotion_classifier import EmotionClassifier
-
-class EmotionAnalysisTool(BaseTool):
-    name = "emotion_analysis"
-    description = "分析文本的情感，返回 top-3 情感标签及置信度"
-
-    def __init__(self):
-        super().__init__()
-        self.clf = EmotionClassifier(auto_download=True)
-
-    def _run(self, query: str) -> str:
-        return str(self.clf.predict(query, top_k=3)[0])
-```
-
-### FastAPI 服务
+## 9. 集成示例（长生命周期服务只需一次加载）
 
 ```python
 from fastapi import FastAPI
 from pydantic import BaseModel
-from emotion_classifier import EmotionClassifier
+from src import EmotionClassifier
 
 app = FastAPI()
-clf = EmotionClassifier(auto_download=True, encoder_cache_size=4096)
+clf = EmotionClassifier(auto_download=True, precision="int8")  # 进程级唯一实例
 
-class Request(BaseModel):
-    text: str
-    top_k: int = 3
+class Req(BaseModel):
+  text: str
+  top_k: int = 3
 
 @app.post("/predict")
-def predict(req: Request):
-    return {"results": clf.predict(req.text, req.top_k)[0]}
+def predict(req: Req):
+  return {"results": clf.predict(req.text, req.top_k)[0]}
 ```
 
 ---
 
 ## License
 
-MIT
+MIT 见[LICENSE](LICENSE)
 
 ## 致谢
 
-- [xlm-roberta-base](https://huggingface.co/FacebookAI/xlm-roberta-base) — 多语言编码器基座
-- [TextPruner](https://github.com/airaria/TextPruner) — 词表裁剪与编码器剪枝
-- [NLLB-200](https://huggingface.co/facebook/nllb-200-distilled-600M) — 回译与跨语言扩充
-- [PEFT](https://github.com/huggingface/peft) — LoRA
-- [candle](https://github.com/huggingface/candle) / [PyO3](https://pyo3.rs) — Rust 内核与 Python 绑定
+[xlm-roberta-base](https://huggingface.co/FacebookAI/xlm-roberta-base) · [TextPruner](https://github.com/airaria/TextPruner) · [NLLB-200](https://huggingface.co/facebook/nllb-200-distilled-600M) · [PEFT](https://github.com/huggingface/peft) · [ort](https://ort.pyke.io/) / [candle](https://github.com/huggingface/candle) / [PyO3](https://pyo3.rs)

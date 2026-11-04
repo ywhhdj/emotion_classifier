@@ -62,12 +62,17 @@ full = [
 ]
 
 [project.scripts]
-emotion-classify = "src.cli:main"
+emotion-classify = "emotion_classifier.cli:main"
 
 [tool.maturin]
-features = ["pyo3/extension-module"]
-module-name = "src._core"
-bindings = "pyo3"
+features = ["pyo3/extension-module", "backend-ort"]
 python-source = "."
-manifest-path = "rust/crates/emotion-python/Cargo.toml"
-include = [{ path = "src/data/*.json", format = ["sdist", "wheel"] }]
+module-name = "emotion_classifier._core"
+bindings = "pyo3"
+manifest-path = "native/crates/emotion-python/Cargo.toml"
+include = [
+    { path = "emotion_classifier/data/*.json", format = ["sdist", "wheel"] },
+    { path = "emotion_classifier/*.py", format = ["sdist", "wheel"] },
+    { path = "emotion_classifier/models/*.py", format = ["sdist", "wheel"] },
+]
+profile = "release"

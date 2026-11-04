@@ -1,6 +1,5 @@
 import argparse
 import os
-from typing import Literal
 import sys
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -14,7 +13,7 @@ def cli():
     if known.mode == "train":
         from train.cli import main
     else:
-        from src.cli import main
+        from emotion_classifier.cli import main
     main(remaining)
 
 

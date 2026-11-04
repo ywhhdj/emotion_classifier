@@ -9,9 +9,6 @@ onnx>=1.14
 onnxsim>=0.4
 onnxconverter-common>=1.13
 scipy>=1.10
-# 三语词表裁剪（主路径）；hf-trim 仅作方法学参考，原生不支持 XLM-R
 textpruner>=1.0
-# 回译 / 跨语言扩充（NLLB-200）
 sentencepiece>=0.1.99
-# v1 兼容（MiniLM 句向量）；v2 不再需要，留作回退
 sentence-transformers>=2.2

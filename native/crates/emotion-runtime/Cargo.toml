@@ -1,0 +1,29 @@
+[package]
+name = "emotion-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "模型加载 / 全局单一引擎 / 动态 padding 批调度 / 前向（ort 加载三档 ONNX 为默认，candle 可选）"
+
+[dependencies]
+emotion-core = { path = "../emotion-core" }
+emotion-tokenizer = { path = "../emotion-tokenizer" }
+candle-core.workspace = true
+candle-nn.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+memmap2.workspace = true
+
+[features]
+default = []
+backend-ort = ["ort"]
+
+[dependencies.ort]
+version = "2.0.0-rc.15"
+optional = true
+features = ["tls-rustls"]
+
+[lib]
+name = "emotion_runtime"
+path = "src/lib.rs"

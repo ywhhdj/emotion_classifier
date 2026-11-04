@@ -1,5 +1,4 @@
-"""兼容旧安装方式（python setup.py / pip install .）。
-
+"""
 新项目请用 pyproject.toml（maturin 构建，含 Rust 内核）：
     pip install .            # 需要 Rust 工具链
     EMOTION_BACKEND=onnx pip install .   # 纯 Python 回退
@@ -8,9 +7,11 @@
 from setuptools import find_namespace_packages, setup
 
 setup(
-    name="emotion-classifier",
+    name="emoclassifier",
     version="0.2.0",
-    packages=find_namespace_packages(include=["src", "src.*"]),
+    packages=find_namespace_packages(
+        include=["src", "src.*"]
+    ),
     include_package_data=True,
     package_data={"src": ["data/*.json"]},
     install_requires=[
@@ -42,6 +43,8 @@ setup(
             "emotion-classify=src.cli:main",
         ],
     },
-    # 代码大量使用 PEP 604（str | Path）与内置泛型，3.10 以下会直接报错
     python_requires=">=3.10",
 )
+
+# 打包命令
+# py setup.py 

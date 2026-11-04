@@ -88,9 +88,15 @@ def fake_tokenizer_json():
                            "add_prefix_space": True, "trim_offsets": True},
         "decoder": {"type": "Metaspace", "replacement": "▁",
                     "prepend_scheme": "always", "split": True},
-        "model": {"type": "SentencePieceBPE", "dropout": None, "unk_token": None,
-                  "fuse_unk": True, "byte_fallback": False,
-                  "vocab": [[t, 0.0] for t in VOCAB_TOKENS], "merges": None},
+        "model": {
+           "type": "SentencePieceBPE",
+           "dropout": None, 
+           "unk_token": None,
+            "fuse_unk": True,
+            "byte_fallback": False,
+            "vocab": [[t, 0.0] for t in VOCAB_TOKENS],
+            "merges": None
+         },
     }
 
 
